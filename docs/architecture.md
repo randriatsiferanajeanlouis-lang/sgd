@@ -16,7 +16,9 @@ flowchart LR
     N -- HTTP intranet uniquement --> A
 ```
 
-Aucun service externe : pas de cloud, pas d'e-mail, pas de CDN (polices et scripts servis localement).
+Aucun service externe : pas de cloud, pas de CDN (polices et scripts servis localement).
+Seule sortie : le serveur de messagerie de l'entreprise (`MAIL_*` dans `.env`), utilisé uniquement pour
+les alertes « délai dépassé » envoyées au destinataire et à l'expéditeur.
 
 ## Couches applicatives
 
