@@ -1,0 +1,28 @@
+<?php
+
+return [
+    'dossier.created' => 'Création du dossier',
+    'dossier.sent' => 'Envoi',
+    'dossier.updated' => 'Modification',
+    'dossier.status_changed' => 'Changement de statut',
+    'dossier.archived' => 'Archivage du dossier',
+    'dossier.reopened' => 'Réouverture du dossier',
+    'external.registered' => 'Enregistrement de la demande externe',
+    'official_response.recorded' => 'Réponse officielle enregistrée',
+    'recipient.received' => 'Réception',
+    'recipient.opened' => 'Ouverture',
+    'recipient.status_changed' => 'Changement de statut du destinataire',
+    'recipient.answered' => 'Réponse',
+    'recipient.archived' => 'Archivage du traitement',
+    'recipient.reopened' => 'Réouverture du traitement',
+    'transmission.sent' => 'Transmission',
+    'validation.requested' => 'Transmission au responsable',
+    'validation.approved' => 'Validation',
+    'validation.rejected' => 'Refus',
+    'document.added' => 'Ajout de document',
+    'document.replaced' => 'Remplacement de document',
+    'document.cancelled' => 'Annulation de document',
+    'reminder.sent' => 'Relance',
+    'deadline.today' => 'Échéance atteinte',
+    'deadline.overdue' => 'Délai dépassé',
+];

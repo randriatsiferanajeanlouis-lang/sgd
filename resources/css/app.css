@@ -1,0 +1,159 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Charte inspirée du site de l'Université de Mahajanga :
+ * bleu roi #1a1a8c, bleu nuit #0c0c4a, lavande #ececfb, gris froids,
+ * police Manrope, angles peu arrondis, titres serrés, sur-titres en capitales.
+ */
+@theme {
+    --font-sans: 'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif, 'Apple Color Emoji',
+        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+    --color-brand-50: #ececfb;
+    --color-brand-100: #dedffd;
+    --color-brand-300: #a5a5f5;
+    --color-brand-400: #4a45f0;
+    --color-brand-500: #1a1a8c;
+    --color-brand-600: #2b2ba8;
+    --color-brand-700: #11116f;
+    --color-brand-900: #0c0c4a;
+
+    /* Accents de la charte */
+    --color-univ-navy: #0c0c4a;
+    --color-univ-deep: #14144b;
+    --color-univ-electric: #2323fe;
+    --color-univ-ink: #202334;
+    --color-univ-muted: #555968;
+    --color-univ-line: #dedfe5;
+    --color-univ-surface: #f4f4f6;
+
+    /* Mode sombre : surfaces bleu nuit de la charte */
+    --color-slate-700: #2c2c5e;
+    --color-slate-800: #1c1c4a;
+    --color-slate-900: #121238;
+    --color-slate-950: #0a0a26;
+}
+
+[x-cloak] {
+    display: none !important;
+}
+
+:focus-visible {
+    outline: 3px solid var(--color-univ-electric);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+@layer base {
+    input:not([type='checkbox'], [type='radio'], [type='file']):focus,
+    select:focus,
+    textarea:focus {
+        outline: none;
+        border-color: var(--color-brand-500);
+        box-shadow: 0 0 0 3px var(--color-brand-50);
+    }
+
+    :where(.dark) input:not([type='checkbox'], [type='radio'], [type='file']):focus,
+    :where(.dark) select:focus,
+    :where(.dark) textarea:focus {
+        border-color: var(--color-brand-300);
+        box-shadow: 0 0 0 3px rgb(165 165 245 / 0.2);
+    }
+
+    input[type='checkbox'],
+    input[type='radio'] {
+        accent-color: var(--color-brand-500);
+    }
+}
+
+::selection {
+    background: var(--color-brand-50);
+    color: var(--color-brand-500);
+}
+
+/* Sur-titre en capitales, comme les rubriques du site universitaire */
+@utility kicker {
+    @apply text-[11px] font-extrabold tracking-[0.08em] text-brand-500 uppercase dark:text-brand-300;
+}
+
+@utility btn {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-bold whitespace-nowrap transition disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+@utility btn-primary {
+    @apply btn border border-brand-500 bg-brand-500 text-white hover:-translate-y-px hover:border-brand-600 hover:bg-brand-600 dark:border-brand-400 dark:bg-brand-400 dark:hover:bg-brand-600;
+}
+
+@utility btn-secondary {
+    @apply btn border border-univ-line bg-white text-brand-500 hover:border-brand-300 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-900 dark:text-brand-100 dark:hover:bg-slate-800;
+}
+
+@utility btn-danger {
+    @apply btn border border-red-300 bg-white text-red-600 hover:bg-red-50 dark:border-red-800 dark:bg-slate-900 dark:text-red-400 dark:hover:bg-red-950;
+}
+
+@utility btn-success {
+    @apply btn bg-green-600 text-white hover:bg-green-700;
+}
+
+@utility card {
+    @apply rounded-lg border border-univ-line bg-white p-6 shadow-[0_1px_2px_rgb(21_33_43/0.04)] dark:border-slate-800 dark:bg-slate-900 dark:shadow-none;
+}
+
+/* Tuile de chiffre clé (tableau de bord, statistiques) : fond teinté, icône ronde, valeur centrée. */
+@utility stat-tile {
+    @apply flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-3.5 text-center transition hover:-translate-y-0.5 hover:shadow-lg;
+}
+
+@utility data-table {
+    @apply w-full text-left text-sm;
+
+    & th {
+        @apply border-b-2 border-brand-500 bg-univ-surface px-4 py-3 text-[11px] font-extrabold tracking-[0.08em] text-brand-500 uppercase dark:border-brand-300 dark:bg-slate-950/40 dark:text-brand-300;
+    }
+
+    & td {
+        @apply border-b border-univ-line px-4 py-3 align-middle dark:border-slate-800;
+    }
+
+    & tbody tr {
+        @apply transition-colors hover:bg-brand-50/60 dark:hover:bg-slate-800/40;
+    }
+
+    /* Téléphone : chaque ligne devient une fiche, le libellé de colonne (data-label) précède la valeur. */
+    @media (width < 40rem) {
+        & thead {
+            @apply sr-only;
+        }
+
+        & tr {
+            @apply block border-b border-slate-200 py-2 dark:border-slate-800;
+        }
+
+        & td {
+            @apply relative block border-0 px-4 py-1.5 text-left break-words whitespace-normal;
+        }
+
+        & td[data-label] {
+            @apply min-h-8 pl-36;
+        }
+
+        & td[data-label]::before {
+            @apply absolute top-2 left-4 w-28 text-xs font-medium text-slate-500;
+            content: attr(data-label);
+        }
+
+        &:where(.dark *) td[data-label]::before {
+            @apply text-slate-400;
+        }
+
+        & td > .justify-end {
+            @apply justify-start;
+        }
+    }
+}
