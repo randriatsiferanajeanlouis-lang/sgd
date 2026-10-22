@@ -1,4 +1,5 @@
-import { Head, useForm } from '@inertiajs/react';
+import { useEffect } from 'react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import PwaInstall from '@/components/app/PwaInstall';
 import Field from '@/components/form/Field';
 import GuestLayout from '@/layouts/GuestLayout';
@@ -9,6 +10,24 @@ import GuestLayout from '@/layouts/GuestLayout';
  */
 export default function Login({ loginUrl }) {
     const form = useForm({ username: '', password: '', remember: false });
+    // Erreurs reçues avec la page elle-même (ex. compte désactivé pendant la session).
+    const pageErrors = usePage().props.errors ?? {};
+
+    // Retour arrière depuis l'application : Inertia restaurerait le formulaire
+    // depuis l'historique ; on redemande la page au serveur, qui renvoie
+    // l'utilisateur déjà connecté vers son tableau de bord.
+    useEffect(() => {
+        const reload = () => window.location.replace(window.location.href);
+        // Page restaurée telle quelle par le cache « précédent / suivant » du navigateur.
+        const onPageShow = (event) => event.persisted && reload();
+
+        if (performance.getEntriesByType('navigation')[0]?.type === 'back_forward') {
+            reload();
+        }
+        window.addEventListener('pageshow', onPageShow);
+
+        return () => window.removeEventListener('pageshow', onPageShow);
+    }, []);
 
     const submit = (event) => {
         event.preventDefault();
@@ -32,7 +51,7 @@ export default function Login({ loginUrl }) {
                     autoFocus
                     value={form.data.username}
                     onChange={(value) => form.setData('username', value)}
-                    error={form.errors.username}
+                    error={form.errors.username ?? pageErrors.username}
                 />
                 <Field
                     name="password"
@@ -42,7 +61,7 @@ export default function Login({ loginUrl }) {
                     required
                     value={form.data.password}
                     onChange={(value) => form.setData('password', value)}
-                    error={form.errors.password}
+                    error={form.errors.password ?? pageErrors.password}
                 />
 
                 <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">

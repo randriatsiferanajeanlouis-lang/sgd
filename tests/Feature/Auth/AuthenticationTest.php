@@ -72,6 +72,21 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_account_disabled_during_the_session_shows_the_reason_on_the_login_page(): void
+    {
+        $user = $this->employee(['username' => 'marie']);
+        $this->actingAs($user);
+        $user->forceFill(['is_active' => false])->save();
+
+        $this->followingRedirects()
+            ->get(route('dashboard'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Auth/Login')
+                ->where('errors.username', __('auth.inactive')));
+
+        $this->assertGuest();
+    }
+
     public function test_unknown_username_is_rejected(): void
     {
         $this->post(route('login.store'), ['username' => 'inconnu', 'password' => 'password'])
