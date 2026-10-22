@@ -27,7 +27,6 @@ class NoModalFormTest extends TestCase
             [$admin, route('admin.users.edit', $staff), $staff->name],
             [$admin, route('admin.departments.create'), 'Créer un département'],
             [$admin, route('admin.departments.edit', Department::query()->firstWhere('code', 'RSE')), 'Modifier le département'],
-            [$staff, route('profile.edit'), 'Modifier mes coordonnées'],
             [$staff, route('dossiers.edit', $dossier), 'Modifier le dossier'],
         ];
 
@@ -43,6 +42,9 @@ class NoModalFormTest extends TestCase
         $this->actingAs($staff)->get(route('password.change'))->assertOk()
             ->assertInertia(fn ($page) => $page->component('Auth/ChangePassword'));
         $this->assertStringContainsString('<FormPage', (string) file_get_contents(resource_path('js/pages/Auth/ChangePassword.jsx')));
+        $this->actingAs($staff)->get(route('profile.edit'))->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Profile/Edit'));
+        $this->assertStringContainsString('<FormPage', (string) file_get_contents(resource_path('js/pages/Profile/Edit.jsx')));
         $this->assertStringContainsString("id = 'page-form'", (string) file_get_contents(resource_path('js/components/form/FormPage.jsx')));
 
         $this->assertFileDoesNotExist(resource_path('views/components/form/modal.blade.php'));

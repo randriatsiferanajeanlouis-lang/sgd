@@ -3,8 +3,11 @@ import { cn } from '@/lib/utils';
 /**
  * Champ de formulaire (même rendu que le composant Blade <x-form.field>) :
  * libellé, astérisque rouge si obligatoire, aide et message d'erreur Laravel.
+ * Type « file » : champ non contrôlé, onChange reçoit le fichier choisi (ou null).
  */
 export default function Field({ name, label, type = 'text', value, onChange, error, hint, required = false, className, inputClassName, ...props }) {
+    const isFile = type === 'file';
+
     return (
         <div className={className}>
             <label htmlFor={name} className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -20,8 +23,8 @@ export default function Field({ name, label, type = 'text', value, onChange, err
                 id={name}
                 name={name}
                 type={type}
-                value={value ?? ''}
-                onChange={(event) => onChange?.(event.target.value, event)}
+                {...(isFile ? {} : { value: value ?? '' })}
+                onChange={(event) => onChange?.(isFile ? (event.target.files?.[0] ?? null) : event.target.value, event)}
                 required={required}
                 aria-invalid={error ? 'true' : undefined}
                 aria-describedby={error ? `${name}-error` : hint ? `${name}-hint` : undefined}

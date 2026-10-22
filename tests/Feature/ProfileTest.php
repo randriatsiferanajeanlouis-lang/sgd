@@ -100,6 +100,64 @@ class ProfileTest extends TestCase
         $this->get(route('users.photo', $user))->assertOk();
     }
 
+    public function test_edit_page_is_rendered_by_react_with_only_the_editable_fields(): void
+    {
+        $user = User::factory()->withRole(Role::STAFF)->create(['phone' => '034 00 000 00']);
+
+        $this->actingAs($user)->get(route('profile.edit'))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Profile/Edit')
+                ->where('title', 'Modifier mon profil')
+                ->where('profile', [
+                    'phone' => '034 00 000 00',
+                    'email' => $user->email,
+                    'initials' => $user->initials(),
+                    'photoUrl' => null,
+                ])
+                ->where('urls.update', route('profile.update'))
+                ->where('urls.cancel', route('profile.show')));
+
+        $this->assertFalse(view()->exists('profile.edit'));
+        $page = (string) file_get_contents(resource_path('js/pages/Profile/Edit.jsx'));
+        foreach (['Modifier mes coordonnées', 'name="phone"', 'name="email"', 'name="photo"', 'name="remove_photo"', 'Supprimer la photo actuelle', 'JPG, PNG ou WebP, 2 Mo maximum.', "_method: 'put'", 'forceFormData'] as $needle) {
+            $this->assertStringContainsString($needle, $page);
+        }
+        foreach (['department', 'role_id', 'job_title', 'username'] as $forbidden) {
+            $this->assertStringNotContainsString($forbidden, $page);
+        }
+    }
+
+    public function test_react_form_uploads_the_photo_and_reloads_the_profile(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->withRole(Role::STAFF)->create();
+        $inertia = ['X-Inertia' => 'true', 'X-Requested-With' => 'XMLHttpRequest'];
+
+        // Envoi multipart comme le fait la page React : POST + _method=PUT.
+        $this->actingAs($user)->withHeaders($inertia)
+            ->post(route('profile.update'), ['_method' => 'put', 'phone' => '034 55 555 55', 'email' => '', 'photo' => $this->pngUpload(), 'remove_photo' => '0'])
+            ->assertStatus(409)
+            ->assertHeader('X-Inertia-Location', route('profile.show'))
+            ->assertSessionHas('status', 'Votre profil a été mis à jour.');
+
+        $user->refresh();
+        $this->assertSame('034 55 555 55', $user->phone);
+        $this->assertNull($user->email);
+        Storage::disk('local')->assertExists($user->photo_path);
+
+        // Suppression de la photo
+        $path = $user->photo_path;
+        $this->withHeaders($inertia)->post(route('profile.update'), ['_method' => 'put', 'remove_photo' => '1'])->assertStatus(409);
+        $this->assertNull($user->fresh()->photo_path);
+        Storage::disk('local')->assertMissing($path);
+
+        // Erreur : retour au formulaire avec le message
+        $this->from(route('profile.edit'))->withHeaders($inertia)
+            ->post(route('profile.update'), ['_method' => 'put', 'phone' => 'abc<script>'])
+            ->assertRedirect(route('profile.edit'))
+            ->assertSessionHasErrors('phone');
+    }
+
     public function test_user_cannot_change_department_role_or_job_title(): void
     {
         $user = User::factory()->withRole(Role::STAFF, 'COLLECTE')->create(['job_title' => 'Agent']);

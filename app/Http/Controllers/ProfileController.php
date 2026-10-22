@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProfileController extends Controller
@@ -45,12 +46,26 @@ class ProfileController extends Controller
         ]);
     }
 
-    public function edit(Request $request): View
+    public function edit(Request $request): InertiaResponse
     {
-        return view('profile.edit', ['user' => $request->user()]);
+        $user = $request->user();
+
+        return Inertia::render('Profile/Edit', [
+            'title' => 'Modifier mon profil',
+            'profile' => [
+                'phone' => $user->phone,
+                'email' => $user->email,
+                'initials' => $user->initials(),
+                'photoUrl' => $user->photo_path ? route('users.photo', $user) : null,
+            ],
+            'urls' => [
+                'update' => route('profile.update'),
+                'cancel' => route('profile.show'),
+            ],
+        ]);
     }
 
-    public function update(UpdateProfileRequest $request, AuditTrail $auditTrail): RedirectResponse
+    public function update(UpdateProfileRequest $request, AuditTrail $auditTrail): SymfonyResponse
     {
         $user = $request->user();
         $user->fill($request->safe()->only(['phone', 'email']));
@@ -74,7 +89,10 @@ class ProfileController extends Controller
             $auditTrail->record('user.profile_updated', $user, $before, $changes + ($photoChanged ? ['photo' => 'modifiée'] : []), department: $user->department);
         }
 
-        return redirect()->route('profile.show')->with('status', 'Votre profil a été mis à jour.');
+        $request->session()->flash('status', 'Votre profil a été mis à jour.');
+
+        // Rechargement complet : l'en-tête et le menu (photo, initiales) sont encore en Blade.
+        return Inertia::location(route('profile.show'));
     }
 
     /**
