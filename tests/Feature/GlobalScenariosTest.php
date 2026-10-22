@@ -84,7 +84,7 @@ class GlobalScenariosTest extends TestCase
 
         $this->assertSame(ValidationStatus::Approved, $dossier->validations()->sole()->status);
         $this->assertSame(RecipientStatus::Answered, $treatment->fresh()->status);
-        $this->actingAs($employeeA)->get(route('dossiers.show', $dossier))->assertSee('Accordé après validation.');
+        $this->actingAs($employeeA)->get(route('dossiers.show', $dossier))->assertPropsSee('Accordé après validation.');
         $this->assertSame(1, $employeeA->notifications()->where('data->type', 'response_received')->count());
     }
 

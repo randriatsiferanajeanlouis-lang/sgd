@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { paginationLabel } from '@/lib/text';
 import { cn } from '@/lib/utils';
 
 const ALL = 'all';
@@ -182,10 +183,10 @@ export default function ActivityLog({ logs, filters, categories, actors, summary
                     {logs.links.map((link, index) =>
                         link.url ? (
                             <Button key={index} asChild size="sm" variant={link.active ? 'default' : 'outline'}>
-                                <Link href={link.url} preserveScroll preserveState dangerouslySetInnerHTML={{ __html: link.label }} />
+                                <Link href={link.url} preserveScroll preserveState>{paginationLabel(link.label)}</Link>
                             </Button>
                         ) : (
-                            <Button key={index} size="sm" variant="outline" disabled dangerouslySetInnerHTML={{ __html: link.label }} />
+                            <Button key={index} size="sm" variant="outline" disabled>{paginationLabel(link.label)}</Button>
                         ),
                     )}
                 </nav>

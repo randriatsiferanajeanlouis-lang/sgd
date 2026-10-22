@@ -54,7 +54,7 @@ class DeadlinesAndRemindersTest extends TestCase
         $dossier = $this->sendInternalRequest($sender, [$recipient]);
         $treatment = $dossier->recipients()->sole();
 
-        $this->actingAs($sender)->get(route('dossiers.show', $dossier))->assertSee('Relancer');
+        $this->actingAs($sender)->get(route('dossiers.show', $dossier))->assertInertia(fn ($page) => $page->where('recipients.0.canRemind', true));
         $this->post(route('reminders.store', $treatment))->assertRedirect();
 
         $reminder = $treatment->reminders()->sole();
@@ -105,9 +105,11 @@ class DeadlinesAndRemindersTest extends TestCase
         $this->assertSame(1, $dossier->activityLogs()->where('action', 'deadline.overdue')->count());
         $this->assertNull($dossier->activityLogs()->where('action', 'deadline.overdue')->sole()->user_id);
 
+        // Bandeau « Statut : En cours — Alerte : délai dépassé. » affiché par la page React.
         $this->actingAs($sender)->get(route('dossiers.show', $dossier))
-            ->assertSee('Statut : En cours — Alerte : délai dépassé.')
-            ->assertSee('Délai dépassé de 1 jour');
+            ->assertInertia(fn ($page) => $page->where('dossier.status.label', 'En cours')->where('dossier.deadline.overdue', true))
+            ->assertPropsSee('Délai dépassé de 1 jour');
+        $this->assertStringContainsString('Statut : {dossier.status.label} — Alerte : délai dépassé.', (string) file_get_contents(resource_path('js/components/dossier/Summary.jsx')));
     }
 
     public function test_external_overdue_alerts_the_recipient_and_hr(): void

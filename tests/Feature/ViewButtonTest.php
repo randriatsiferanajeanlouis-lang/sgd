@@ -72,7 +72,7 @@ class ViewButtonTest extends TestCase
         $table = (string) file_get_contents(resource_path('js/components/app/DossierTable.jsx'));
         $this->assertStringContainsString('{shortText(dossier.subject)}', $table);
         $this->assertStringContainsString('title={dossier.subject}', $table);
-        $this->get(route('dossiers.show', $dossier))->assertSee($long);
+        $this->get(route('dossiers.show', $dossier))->assertInertia(fn ($page) => $page->where('dossier.subject', $long));
 
         // Historique : référence entière sur une ligne, objet abrégé.
         $this->get(route('history.index'))

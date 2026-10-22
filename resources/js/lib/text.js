@@ -25,3 +25,16 @@ export function shortText(text, max = SUBJECT_LIST_CHARS) {
 
     return `${cut.replace(/[\s,;:.\-–—]+$/u, '')} ...`;
 }
+
+/**
+ * Libellé d'un lien de pagination Laravel (« &laquo; Previous », « 2 »,
+ * « Next &raquo; ») en texte français, sans HTML.
+ */
+export function paginationLabel(label) {
+    return String(label)
+        .replace('&laquo;', '«')
+        .replace('&raquo;', '»')
+        .replace('Previous', 'Précédent')
+        .replace('Next', 'Suivant')
+        .trim();
+}

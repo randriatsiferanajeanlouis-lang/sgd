@@ -58,8 +58,8 @@ class HistoryTraceabilityTest extends TestCase
         Notification::assertSentTo($this->recipient, DossierNotification::class, fn ($n) => $n->type === 'dossier_updated');
 
         $this->get(route('dossiers.show', $this->dossier))
-            ->assertSee('Historique complet')
-            ->assertSee('objet : Demande fourniture → Demande fourniture informatique');
+            ->assertInertia(fn ($page) => $page->where('can.viewHistory', true)->has('history'))
+            ->assertPropsSee('objet : Demande fourniture → Demande fourniture informatique');
     }
 
     public function test_only_the_author_can_modify_the_dossier(): void
@@ -76,12 +76,12 @@ class HistoryTraceabilityTest extends TestCase
         $otherHead = $this->makeUser(Role::DEPARTMENT_HEAD, 'ARMEMENT');
         $admin = $this->makeUser(Role::ADMIN, 'ADMINISTRATION');
 
-        $this->actingAs($this->recipient)->get(route('dossiers.show', $this->dossier))->assertSee('Historique complet');
-        $this->actingAs($technicalHead)->get(route('dossiers.show', $this->dossier))->assertSee('Historique complet');
+        $this->actingAs($this->recipient)->get(route('dossiers.show', $this->dossier))->assertInertia(fn ($page) => $page->where('can.viewHistory', true)->whereNot('history', null));
+        $this->actingAs($technicalHead)->get(route('dossiers.show', $this->dossier))->assertInertia(fn ($page) => $page->where('can.viewHistory', true)->whereNot('history', null));
         $this->actingAs($technicalHead)->get(route('dossiers.history.pdf', $this->dossier))->assertOk();
         $this->actingAs($otherHead)->get(route('dossiers.show', $this->dossier))->assertForbidden();
 
-        $this->actingAs($admin)->get(route('dossiers.show', $this->dossier))->assertOk()->assertDontSee('Historique complet');
+        $this->actingAs($admin)->get(route('dossiers.show', $this->dossier))->assertOk()->assertInertia(fn ($page) => $page->where('can.viewHistory', false)->where('history', null));
         $this->actingAs($admin)->get(route('dossiers.history.pdf', $this->dossier))->assertForbidden();
         $this->actingAs($admin)->get(route('dossiers.history.word', $this->dossier))->assertForbidden();
     }
@@ -91,7 +91,7 @@ class HistoryTraceabilityTest extends TestCase
         $admin = $this->makeUser(Role::ADMIN, 'ADMINISTRATION');
         $admin->role->permissions()->attach(Permission::query()->firstWhere('name', 'view_all_history'));
 
-        $this->actingAs($admin->fresh())->get(route('dossiers.show', $this->dossier))->assertSee('Historique complet');
+        $this->actingAs($admin->fresh())->get(route('dossiers.show', $this->dossier))->assertInertia(fn ($page) => $page->where('can.viewHistory', true)->whereNot('history', null));
     }
 
     public function test_pdf_export_is_an_a4_pdf(): void

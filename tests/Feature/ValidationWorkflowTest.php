@@ -44,7 +44,7 @@ class ValidationWorkflowTest extends TestCase
         $dossier = $this->sendInternalRequest($this->employeeA, [$this->employeeB], ['attachments' => [$this->pdf('devis.pdf')]]);
         $treatment = $dossier->recipients()->sole();
 
-        $this->actingAs($this->employeeB)->get(route('dossiers.show', $dossier))->assertSee('Transmettre au responsable');
+        $this->actingAs($this->employeeB)->get(route('dossiers.show', $dossier))->assertInertia(fn ($page) => $page->where('myTreatment.canRequestValidation', true));
         $this->post(route('validations.store', $treatment), ['comment' => 'Montant supérieur à mon plafond.'])->assertRedirect();
 
         $validation = $dossier->validations()->sole();
@@ -59,10 +59,8 @@ class ValidationWorkflowTest extends TestCase
         $this->actingAs($this->managerB)->get(route('validations.index'))->assertOk()->assertSee($dossier->reference)->assertSee('Montant supérieur à mon plafond.');
         $this->get(route('dossiers.show', $dossier))
             ->assertOk()
-            ->assertSee('Merci de traiter cette demande.')
-            ->assertSee('devis.pdf')
-            ->assertSee('Montant supérieur à mon plafond.')
-            ->assertSee('Valider');
+            ->assertPropsSee('Merci de traiter cette demande.', 'devis.pdf', 'Montant supérieur à mon plafond.')
+            ->assertInertia(fn ($page) => $page->where('validations.0.canDecide', true));
 
         $this->post(route('validations.decide', $validation), ['decision' => 'approve', 'comment' => 'Accord budgétaire.'])->assertRedirect();
 
@@ -117,7 +115,7 @@ class ValidationWorkflowTest extends TestCase
         $orphan = $this->makeUser(Role::STAFF, 'ARMEMENT');
         $dossier = $this->sendInternalRequest($this->employeeA, [$orphan]);
 
-        $this->actingAs($orphan)->get(route('dossiers.show', $dossier))->assertDontSee('Transmettre au responsable');
+        $this->actingAs($orphan)->get(route('dossiers.show', $dossier))->assertInertia(fn ($page) => $page->where('myTreatment.canRequestValidation', false));
         $this->post(route('validations.store', $dossier->recipients()->sole()))->assertForbidden();
     }
 

@@ -80,7 +80,9 @@ class ExternalRequestTest extends TestCase
 
         // Le responsable ouvre : En cours, puis décision positive.
         $treatment = $dossier->recipients()->sole();
-        $this->actingAs($this->rseManager)->get(route('dossiers.show', $dossier))->assertSee('Envoyer la décision au RH');
+        // Bouton « Envoyer la décision au RH » : formulaire de réponse d'une demande externe.
+        $this->actingAs($this->rseManager)->get(route('dossiers.show', $dossier))
+            ->assertInertia(fn ($page) => $page->where('dossier.external', true)->where('myTreatment.canRespond', true)->has('myTreatment.decisions', 2));
         $this->assertSame(RecipientStatus::InProgress, $treatment->fresh()->status);
 
         $this->post(route('treatments.respond', $treatment), [
@@ -100,7 +102,7 @@ class ExternalRequestTest extends TestCase
         $this->post(route('external-requests.respond', $dossier), ['content' => 'x', 'channel' => 'email', 'sent_at' => now()->toDateString()])->assertForbidden();
 
         // Retour RH : réponse officielle puis archivage.
-        $this->actingAs($this->hr)->get(route('dossiers.show', $dossier))->assertSee('Profil intéressant.')->assertSee('1 décision(s) positive(s)');
+        $this->actingAs($this->hr)->get(route('dossiers.show', $dossier))->assertPropsSee('Profil intéressant.')->assertInertia(fn ($page) => $page->where('hr.positive', 1));
         $this->post(route('external-requests.respond', $dossier), [
             'content' => 'Votre demande de stage est acceptée.',
             'channel' => 'email',
@@ -142,10 +144,8 @@ class ExternalRequestTest extends TestCase
 
         $this->assertEqualsCanonicalizing([ResponseDecision::Positive, ResponseDecision::Negative], $dossier->responses()->pluck('decision')->all());
         $this->actingAs($this->hr)->get(route('dossiers.show', $dossier))
-            ->assertSee('Favorable.')
-            ->assertSee('Pas de place.')
-            ->assertSee('1 décision(s) positive(s)')
-            ->assertSee('1 décision(s) négative(s)');
+            ->assertPropsSee('Favorable.', 'Pas de place.')
+            ->assertInertia(fn ($page) => $page->where('hr.positive', 1)->where('hr.negative', 1));
     }
 
     public function test_external_decision_is_mandatory(): void

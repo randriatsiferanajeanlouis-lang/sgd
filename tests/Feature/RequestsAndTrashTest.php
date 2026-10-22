@@ -125,7 +125,7 @@ class RequestsAndTrashTest extends TestCase
         $recipient = $this->makeUser(Role::STAFF, 'TECHNIQUE');
         $dossier = $this->sendInternalRequest($sender, [$recipient]);
 
-        $this->actingAs($sender)->get(route('dossiers.show', $dossier))->assertSee('Modifier')->assertSee('Supprimer');
+        $this->actingAs($sender)->get(route('dossiers.show', $dossier))->assertInertia(fn ($page) => $page->where('can.update', true)->where('can.delete', true));
 
         $this->put(route('dossiers.update', $dossier), [
             'subject' => 'Objet corrigé après envoi',
@@ -135,7 +135,7 @@ class RequestsAndTrashTest extends TestCase
         ])->assertRedirect(route('dossiers.show', $dossier));
 
         $this->assertSame(1, Dossier::query()->count(), 'Aucun doublon n’est créé.');
-        $this->actingAs($recipient)->get(route('dossiers.show', $dossier))->assertOk()->assertSee('Objet corrigé après envoi');
+        $this->actingAs($recipient)->get(route('dossiers.show', $dossier))->assertOk()->assertInertia(fn ($page) => $page->where('dossier.subject', 'Objet corrigé après envoi'));
     }
 
     public function test_delete_moves_to_the_sender_trash_without_touching_the_recipient(): void
@@ -158,7 +158,7 @@ class RequestsAndTrashTest extends TestCase
             ->where('dossiers.data.0.restore_url', route('trash.restore', $dossier)));
 
         // Le destinataire garde le dossier, son traitement et tout l'historique.
-        $this->actingAs($recipient)->get(route('dossiers.show', $dossier))->assertOk()->assertSee('Mon traitement');
+        $this->actingAs($recipient)->get(route('dossiers.show', $dossier))->assertOk()->assertInertia(fn ($page) => $page->whereNot('myTreatment', null));
         $this->get(route('dossiers.index'))->assertSee('Dossier à jeter');
         $this->assertGreaterThan($historyBefore, DB::table('dossier_activity_logs')->where('dossier_id', $dossier->id)->count());
     }
@@ -188,7 +188,7 @@ class RequestsAndTrashTest extends TestCase
         $this->get(route('trash.index'))->assertInertia(fn (Assert $page) => $page->component('Dossiers/Trash')->has('dossiers.data', 0));
         $this->post(route('trash.restore', $dossier))->assertForbidden();
         $this->assertDatabaseHas('dossiers', ['id' => $dossier->id]);
-        $this->actingAs($recipient)->get(route('dossiers.show', $dossier))->assertOk()->assertSee('Dossier purgé');
+        $this->actingAs($recipient)->get(route('dossiers.show', $dossier))->assertOk()->assertPropsSee('Dossier purgé');
     }
 
     public function test_only_the_sender_can_delete_restore_or_purge(): void
@@ -197,7 +197,7 @@ class RequestsAndTrashTest extends TestCase
         $recipient = $this->makeUser(Role::STAFF, 'TECHNIQUE');
         $dossier = $this->sendInternalRequest($sender, [$recipient]);
 
-        $this->actingAs($recipient)->get(route('dossiers.show', $dossier))->assertOk()->assertDontSee('Placer le dossier');
+        $this->actingAs($recipient)->get(route('dossiers.show', $dossier))->assertOk()->assertInertia(fn ($page) => $page->where('can.delete', false));
         $this->delete(route('dossiers.destroy', $dossier))->assertForbidden();
 
         $this->actingAs($sender)->delete(route('dossiers.destroy', $dossier));

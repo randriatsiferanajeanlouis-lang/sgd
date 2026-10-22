@@ -19,6 +19,7 @@ use App\Services\InternalRequestService;
 use App\Services\TreatmentService;
 use App\Support\Deadline;
 use App\Support\DossierListItem;
+use App\Support\DossierPage;
 use App\Support\Search;
 use App\Support\SubmissionGuard;
 use Illuminate\Database\Eloquent\Builder;
@@ -275,7 +276,7 @@ class DossierController extends Controller
     /**
      * À l'ouverture par un destinataire, son traitement passe de Reçu à En cours.
      */
-    public function show(Request $request, Dossier $dossier, TreatmentService $treatments): View
+    public function show(Request $request, Dossier $dossier, TreatmentService $treatments): InertiaResponse
     {
         Gate::authorize('view', $dossier);
 
@@ -298,22 +299,21 @@ class DossierController extends Controller
         $this->linkToDossier($dossier);
         $myRecipient?->setRelation('dossier', $dossier);
 
-        return view('dossiers.show', [
-            'dossier' => $dossier,
-            'myRecipient' => $myRecipient,
-            'visibleResponses' => $dossier->responses->filter(fn ($response) => $user->can('view', $response))->values(),
-            'documentGroups' => $dossier->documents
-                ->filter(fn ($document) => $document->response === null || $user->can('view', $document->response))
-                ->groupBy('document_key')
-                ->map(fn ($versions) => $versions->sortByDesc('version')->values()),
-            'canViewHistory' => $user->can('viewHistory', $dossier),
-            'forwardTargets' => $myRecipient && $user->can('forward', $myRecipient)
-                ? User::query()->active()->whereNotNull('department_id')->with('department')
-                    ->whereNotIn('id', $dossier->recipients->pluck('assigned_user_id')->push($user->id))
-                    ->orderBy('department_id')->orderBy('last_name')->get()
-                    ->mapWithKeys(fn (User $target) => [$target->id => $target->department?->name.' — '.$target->name.($target->job_title ? ' ('.$target->job_title.')' : '')])
-                : collect(),
-        ]);
+        $visibleResponses = $dossier->responses->filter(fn ($response) => $user->can('view', $response))->values();
+        $documentGroups = $dossier->documents
+            ->filter(fn ($document) => $document->response === null || $user->can('view', $document->response))
+            ->groupBy('document_key')
+            ->map(fn ($versions) => $versions->sortByDesc('version')->values());
+        $forwardTargets = $myRecipient && $user->can('forward', $myRecipient)
+            ? User::query()->active()->whereNotNull('department_id')->with('department')
+                ->whereNotIn('id', $dossier->recipients->pluck('assigned_user_id')->push($user->id))
+                ->orderBy('department_id')->orderBy('last_name')->get()
+                ->mapWithKeys(fn (User $target) => [$target->id => $target->department?->name.' — '.$target->name.($target->job_title ? ' ('.$target->job_title.')' : '')])
+            : collect();
+
+        return Inertia::render('Dossiers/Show', DossierPage::props(
+            $dossier, $user, $myRecipient, $visibleResponses, $documentGroups, $user->can('viewHistory', $dossier), $forwardTargets,
+        ));
     }
 
     /**

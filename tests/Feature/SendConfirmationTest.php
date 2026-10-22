@@ -44,9 +44,11 @@ class SendConfirmationTest extends TestCase
         // Fiche du dossier : transmission à un autre utilisateur et au responsable.
         $dossier = $this->sendInternalRequest($sender, [$recipient]);
         $this->actingAs($recipient)->get(route('dossiers.show', $dossier))->assertOk()
-            ->assertSee('Êtes-vous sûr de vouloir transmettre ce dossier à')
-            ->assertSee('Êtes-vous sûr de vouloir transmettre ce dossier pour validation à')
-            ->assertSee('confirmSend(', false);
+            ->assertInertia(fn ($page) => $page->where('myTreatment.canForward', true));
+        $treatment = (string) file_get_contents(resource_path('js/components/dossier/MyTreatment.jsx'));
+        $this->assertStringContainsString('Êtes-vous sûr de vouloir transmettre ce dossier à', $treatment);
+        $this->assertStringContainsString('Êtes-vous sûr de vouloir transmettre ce dossier pour validation à', $treatment);
+        $this->assertStringContainsString('<ConfirmDialog', $treatment);
     }
 
     public function test_the_server_refuses_a_request_without_a_valid_recipient(): void

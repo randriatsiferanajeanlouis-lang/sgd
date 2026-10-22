@@ -80,7 +80,7 @@ class InternalRequestTest extends TestCase
 
         $this->actingAs($recipient)->get(route('dossiers.index', ['box' => 'received']))->assertOk()->assertSee($dossier->reference);
 
-        $this->get(route('dossiers.show', $dossier))->assertOk()->assertSee('Mon traitement');
+        $this->get(route('dossiers.show', $dossier))->assertOk()->assertInertia(fn ($page) => $page->component('Dossiers/Show')->whereNot('myTreatment', null));
 
         $treatment = $dossier->recipients()->sole();
         $this->assertSame(RecipientStatus::InProgress, $treatment->status);
@@ -132,7 +132,7 @@ class InternalRequestTest extends TestCase
         $this->assertSame(RecipientStatus::Archived, $treatment->fresh()->status);
         $this->assertSame(DossierStatus::Archived, $dossier->fresh()->status);
 
-        $this->actingAs($sender)->get(route('dossiers.show', $dossier))->assertSee('Fournitures livrées.');
+        $this->actingAs($sender)->get(route('dossiers.show', $dossier))->assertPropsSee('Fournitures livrées.');
     }
 
     public function test_multiple_recipients_keep_independent_statuses(): void
@@ -162,8 +162,8 @@ class InternalRequestTest extends TestCase
 
         $this->actingAs($a)->post(route('treatments.respond', $dossier->recipients()->where('assigned_user_id', $a->id)->sole()), ['content' => 'Réponse confidentielle de A']);
 
-        $this->actingAs($b)->get(route('dossiers.show', $dossier))->assertDontSee('Réponse confidentielle de A');
-        $this->actingAs($sender)->get(route('dossiers.show', $dossier))->assertSee('Réponse confidentielle de A');
+        $this->actingAs($b)->get(route('dossiers.show', $dossier))->assertPropsDontSee('Réponse confidentielle de A');
+        $this->actingAs($sender)->get(route('dossiers.show', $dossier))->assertPropsSee('Réponse confidentielle de A');
     }
 
     public function test_nobody_else_can_act_on_a_treatment(): void

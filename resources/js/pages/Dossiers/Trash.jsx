@@ -2,7 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import Icon from '../../components/Icon';
 import PageHeader from '../../components/PageHeader';
-import { shortText } from '@/lib/text';
+import { paginationLabel, shortText } from '@/lib/text';
 
 /**
  * Corbeille de l'expéditeur (React + Inertia). Les données viennent de
@@ -101,10 +101,11 @@ export default function Trash({ title, dossiers, requestsUrl }) {
                                 href={link.url}
                                 preserveScroll
                                 className={link.active ? 'btn-primary px-3 py-1.5' : 'btn-secondary px-3 py-1.5'}
-                                dangerouslySetInnerHTML={{ __html: link.label }}
-                            />
+                            >
+                                {paginationLabel(link.label)}
+                            </Link>
                         ) : (
-                            <span key={index} className="btn-secondary px-3 py-1.5 opacity-50" dangerouslySetInnerHTML={{ __html: link.label }} />
+                            <span key={index} className="btn-secondary px-3 py-1.5 opacity-50">{paginationLabel(link.label)}</span>
                         ),
                     )}
                 </nav>

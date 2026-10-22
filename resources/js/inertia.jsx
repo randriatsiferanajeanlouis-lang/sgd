@@ -26,4 +26,18 @@ createInertiaApp({
 });
 
 // Messages de session (props « flash ») affichés en toast à chaque page Inertia.
-router.on('navigate', (event) => flashPropsToToasts(event.detail.page.props.flash));
+// « navigate » couvre le premier affichage et les changements de page ; « success »
+// couvre aussi les actions qui reviennent sur la même page (redirection vers la
+// même adresse : Inertia remplace alors la page sans « navigate »). Chaque visite
+// n'est traitée qu'une fois.
+const shownVisits = new Set();
+const showFlash = (event) => {
+    const key = event.detail.visitId ?? event.detail.page;
+    if (shownVisits.has(key)) {
+        return;
+    }
+    shownVisits.add(key);
+    flashPropsToToasts(event.detail.page.props.flash);
+};
+router.on('navigate', showFlash);
+router.on('success', showFlash);

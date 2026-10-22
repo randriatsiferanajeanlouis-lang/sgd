@@ -57,7 +57,7 @@ class OtherRequestTypeTest extends TestCase
         // Liste « Mes dossiers » et fiche du dossier du destinataire
         $this->actingAs($recipient)->get(route('dossiers.index', ['box' => 'received']))->assertOk()
             ->assertInertia(fn ($page) => $page->component('Dossiers/Index')->where('dossiers.data.0.type', 'Demande de véhicule'));
-        $this->get(route('dossiers.show', $dossier))->assertOk()->assertSee('Demande de véhicule');
+        $this->get(route('dossiers.show', $dossier))->assertOk()->assertInertia(fn ($page) => $page->where('dossier.type', 'Demande de véhicule'));
 
         // Historique exporté et recherche
         $this->assertSame('Demande de véhicule', app(HistoryExporter::class)->data($dossier, $recipient)['header']['Type']);
@@ -145,7 +145,7 @@ class OtherRequestTypeTest extends TestCase
 
         $dossier = Dossier::query()->latest('id')->firstOrFail();
         $this->assertSame('Demande de visite du site', $dossier->typeLabel());
-        $this->actingAs($manager)->get(route('dossiers.show', $dossier))->assertSee('Demande de visite du site');
+        $this->actingAs($manager)->get(route('dossiers.show', $dossier))->assertPropsSee('Demande de visite du site');
     }
 
     /**

@@ -6,7 +6,7 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { shortText } from '@/lib/text';
+import { paginationLabel, shortText } from '@/lib/text';
 import { cn } from '@/lib/utils';
 
 /** Couleurs des statuts (mêmes teintes que les badges Blade). */
@@ -285,10 +285,10 @@ export default function RequestsIndex({ dossiers, counts, statuses, filters, url
                             {dossiers.links.map((link, index) =>
                                 link.url ? (
                                     <Button key={index} asChild size="sm" variant={link.active ? 'default' : 'outline'} className="h-8">
-                                        <Link href={link.url} preserveScroll preserveState dangerouslySetInnerHTML={{ __html: link.label }} />
+                                        <Link href={link.url} preserveScroll preserveState>{paginationLabel(link.label)}</Link>
                                     </Button>
                                 ) : (
-                                    <Button key={index} size="sm" variant="outline" className="h-8" disabled dangerouslySetInnerHTML={{ __html: link.label }} />
+                                    <Button key={index} size="sm" variant="outline" className="h-8" disabled>{paginationLabel(link.label)}</Button>
                                 ),
                             )}
                         </div>

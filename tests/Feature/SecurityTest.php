@@ -130,9 +130,17 @@ class SecurityTest extends TestCase
         $sender = $this->makeUser(Role::STAFF);
         $dossier = $this->sendInternalRequest($sender, [$this->makeUser(Role::STAFF, 'RSE')], ['subject' => '<script>alert("xss")</script>']);
 
+        // Le HTML ne contient jamais la balise brute ; React affiche l'objet comme du texte.
         $this->actingAs($sender)->get(route('dossiers.show', $dossier))
             ->assertDontSee('<script>alert("xss")</script>', false)
-            ->assertSee('&lt;script&gt;', false);
+            ->assertInertia(fn ($page) => $page->where('dossier.subject', '<script>alert("xss")</script>'));
+        // Aucune page React n'injecte de HTML (seul le composant de graphique shadcn injecte un style CSS fixe).
+        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(resource_path('js'), \FilesystemIterator::SKIP_DOTS));
+        foreach ($files as $file) {
+            if ($file->getExtension() === 'jsx' && ! str_contains($file->getPathname(), 'components'.DIRECTORY_SEPARATOR.'ui')) {
+                $this->assertStringNotContainsString('dangerouslySetInnerHTML', (string) file_get_contents($file->getPathname()), $file->getPathname());
+            }
+        }
     }
 
     public function test_forbidden_page_is_in_french(): void

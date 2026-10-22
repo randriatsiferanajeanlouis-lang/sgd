@@ -87,9 +87,8 @@ class DocumentManagementTest extends TestCase
         $this->actingAs($admin)->get(route('documents.download', $v1))->assertForbidden();
 
         $this->actingAs($this->recipient)->get(route('dossiers.show', $this->dossier))
-            ->assertSee('contrat-signe.pdf')
-            ->assertSee('Versions (2)')
-            ->assertSee('Remplacée');
+            ->assertPropsSee('contrat-signe.pdf', 'Remplacée')
+            ->assertInertia(fn ($page) => $page->has('documents.0.versions', 2));
     }
 
     public function test_only_the_uploader_or_the_dossier_author_can_replace_or_cancel(): void
