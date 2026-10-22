@@ -10,13 +10,39 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProfileController extends Controller
 {
-    public function show(Request $request): View
+    public function show(Request $request): InertiaResponse
     {
-        return view('profile.show', ['user' => $request->user()->load(['department', 'role'])]);
+        $user = $request->user()->load(['department', 'role']);
+
+        return Inertia::render('Profile/Show', [
+            'title' => 'Mon profil',
+            'profile' => [
+                'firstName' => $user->first_name,
+                'lastName' => $user->last_name,
+                'username' => $user->username,
+                'initials' => $user->initials(),
+                'photoUrl' => $user->photo_path ? route('users.photo', $user) : null,
+                'details' => collect([
+                    'Nom' => $user->last_name,
+                    'Prénom' => $user->first_name,
+                    'Fonction' => $user->job_title,
+                    'Département' => $user->department?->name,
+                    'Rôle' => $user->role->label,
+                    'Téléphone' => $user->phone,
+                    'E-mail interne' => $user->email,
+                ])->map(fn ($value, $label) => ['label' => $label, 'value' => $value])->values(),
+            ],
+            'urls' => [
+                'edit' => route('profile.edit'),
+                'logout' => route('logout'),
+            ],
+        ]);
     }
 
     public function edit(Request $request): View
