@@ -22,7 +22,7 @@ class DossierEditor
     ) {}
 
     /**
-     * @param  array{subject: string, description?: string|null, request_type_id: int, urgency_level_id?: int|null, due_at?: string|null}  $data
+     * @param  array{subject: string, description?: string|null, request_type_id: int, request_type_other?: string|null, urgency_level_id?: int|null, due_at?: string|null}  $data
      */
     public function update(Dossier $dossier, User $editor, array $data, ?string $comment): void
     {
@@ -33,6 +33,7 @@ class DossierEditor
                 'subject' => $data['subject'],
                 'description' => $data['description'] ?? null,
                 'request_type_id' => $data['request_type_id'],
+                'request_type_other' => $data['request_type_other'] ?? null,
                 'urgency_level_id' => $data['urgency_level_id'] ?? $dossier->urgency_level_id,
             ]);
 
@@ -78,7 +79,9 @@ class DossierEditor
         return [
             'objet' => (string) $dossier->subject,
             'description' => (string) $dossier->description,
-            'type' => (string) RequestType::query()->whereKey($dossier->request_type_id)->value('name'),
+            'type' => filled($dossier->request_type_other)
+                ? $dossier->request_type_other
+                : (string) RequestType::query()->whereKey($dossier->request_type_id)->value('name'),
             'urgence' => (string) UrgencyLevel::query()->whereKey($dossier->urgency_level_id)->value('name'),
             'échéance' => (string) $dossier->due_at?->format('d/m/Y'),
         ];

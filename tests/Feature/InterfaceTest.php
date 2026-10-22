@@ -330,7 +330,14 @@ class InterfaceTest extends TestCase
         $this->actingAs($this->user(Role::ADMIN, 'ADMINISTRATION'))->get(route('admin.settings.index'))
             ->assertOk()
             ->assertSee('Très urgent')
-            ->assertSee('view_all_history');
+            ->assertSee(route('admin.roles.index'));
+
+        $this->get(route('admin.roles.index'))->assertOk()
+            ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+                ->component('Admin/Roles')
+                ->where('groups.0.name', 'Demandes')
+                ->has('roles', 4));
+        $this->actingAs($this->user(Role::DEPARTMENT_HEAD))->get(route('admin.roles.index'))->assertForbidden();
     }
 
     public function test_admin_updates_urgency_delay_and_role_permissions(): void

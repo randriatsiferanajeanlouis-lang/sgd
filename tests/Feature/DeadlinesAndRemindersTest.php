@@ -200,9 +200,16 @@ class DeadlinesAndRemindersTest extends TestCase
         $this->sendInternalRequest($sender, [$this->makeUser(Role::STAFF, 'TECHNIQUE')]);
 
         $this->actingAs($this->makeUser(Role::DEPARTMENT_HEAD, 'TECHNIQUE'))->get(route('statistics.index'))
-            ->assertOk()->assertSee('Technique')->assertDontSee('Par département');
+            ->assertOk()->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+                ->component('Statistics')
+                ->where('scopeLabel', 'Technique')
+                ->where('kpis.dossiers', 1)
+                ->where('departments', []));
         $this->actingAs($this->makeUser(Role::ADMIN, 'ADMINISTRATION'))->get(route('statistics.index'))
-            ->assertOk()->assertSee('Par département');
+            ->assertOk()->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+                ->component('Statistics')
+                ->where('scopeLabel', 'Tous les départements')
+                ->has('departments', \App\Models\Department::query()->count()));
         $this->actingAs($sender)->get(route('statistics.index'))->assertForbidden();
     }
 }

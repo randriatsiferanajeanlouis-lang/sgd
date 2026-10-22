@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'auth.login' => 'Connexion',
+    'auth.logout' => 'Déconnexion',
+    'auth.failed' => 'Échec de connexion',
     'user.created' => 'Compte créé',
     'user.updated' => 'Compte modifié',
     'user.profile_updated' => 'Coordonnées modifiées par l’utilisateur',
@@ -20,4 +23,5 @@ return [
     'backup.succeeded' => 'Sauvegarde réussie',
     'backup.failed' => 'Sauvegarde échouée',
     'backup.downloaded' => 'Sauvegarde téléchargée',
+    'dossiers.purged' => 'Dossiers de démonstration supprimés',
 ];

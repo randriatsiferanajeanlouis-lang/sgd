@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use App\Models\User;
+use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -53,6 +54,9 @@ class LoginRequest extends FormRequest
 
         if (! Auth::validate($credentials)) {
             RateLimiter::hit($this->throttleKey());
+
+            // Journal d'activité : seul l'identifiant saisi est transmis, jamais le mot de passe.
+            event(new Failed('web', Auth::getLastAttempted(), ['username' => $credentials['username']]));
 
             throw ValidationException::withMessages(['username' => __('auth.failed')]);
         }

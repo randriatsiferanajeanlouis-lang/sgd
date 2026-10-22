@@ -35,7 +35,42 @@ class DossierPolicy
     public function update(User $user, Dossier $dossier): bool
     {
         return $dossier->created_by === $user->id
+            && ! $dossier->isTrashedBySender()
             && ! in_array($dossier->status, [DossierStatus::Archived, $dossier->isExternal() ? DossierStatus::Answered : null], true);
+    }
+
+    /**
+     * Mise à la corbeille : l'expéditeur d'une demande interne. Le dossier
+     * quitte seulement son espace ; destinataires et historique le conservent.
+     */
+    public function delete(User $user, Dossier $dossier): bool
+    {
+        return $dossier->created_by === $user->id
+            && ! $dossier->isExternal()
+            && ! $dossier->isTrashedBySender();
+    }
+
+    /**
+     * Restauration ou suppression définitive depuis la corbeille de l'expéditeur.
+     */
+    public function restore(User $user, Dossier $dossier): bool
+    {
+        return $dossier->created_by === $user->id
+            && $dossier->isTrashedBySender()
+            && $dossier->purged_by_sender_at === null;
+    }
+
+    public function forceDelete(User $user, Dossier $dossier): bool
+    {
+        return $this->restore($user, $dossier);
+    }
+
+    /**
+     * Corbeille : ouverte à qui peut envoyer une demande interne.
+     */
+    public function viewTrash(User $user): bool
+    {
+        return $this->createInternal($user);
     }
 
     /**

@@ -1,6 +1,6 @@
 @props(['directory', 'label' => 'Destinataire(s)'])
 
-<div x-data="recipientPicker(@js($directory), @js(array_map('intval', (array) old('recipients', []))))" class="space-y-3">
+<div x-data="recipientPicker(@js($directory), @js(array_map('intval', (array) old('recipients', []))))" data-recipient-picker class="@container space-y-3">
     <div class="flex items-center justify-between gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
         <span>{{ $label }} <span class="text-red-600 dark:text-red-400" aria-hidden="true">*</span></span>
         <span class="text-slate-400" title="Filtrez par département ou tapez un nom, une fonction : chaque personne choisie reçoit la demande.">
@@ -8,7 +8,7 @@
         </span>
     </div>
 
-    <div class="grid gap-3 sm:grid-cols-[minmax(0,15rem)_1fr]">
+    <div class="grid gap-3 @md:grid-cols-[minmax(0,13rem)_1fr]">
         <div>
             <label for="recipient-department" class="mb-1.5 block text-xs text-slate-500">Département destinataire</label>
             <select id="recipient-department" x-model="departmentId" class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
@@ -53,7 +53,7 @@
             <span class="inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-100 px-2.5 py-1 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-100">
                 <button type="button" @click="remove(user)" class="font-semibold leading-none hover:text-red-600" :aria-label="'Retirer ' + user.name">&times;</button>
                 <span x-text="user.name + ' (' + user.department + ')'"></span>
-                <input type="hidden" name="recipients[]" :value="user.id">
+                <input type="hidden" name="recipients[]" :value="user.id" :data-name="user.name + ' (' + user.department + ')'">
             </span>
         </template>
         <span x-show="selected.length === 0" class="text-sm text-slate-500">Aucun destinataire sélectionné.</span>

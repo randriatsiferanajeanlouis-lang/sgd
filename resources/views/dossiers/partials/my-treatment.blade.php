@@ -1,7 +1,7 @@
 @if ($myRecipient)
-    <section class="card border-brand-300 dark:border-brand-700" aria-labelledby="my-treatment-title">
+    <section class="card border-t-4 border-t-brand-500 dark:border-t-brand-400" aria-labelledby="my-treatment-title">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            <h2 id="my-treatment-title" class="text-lg font-semibold">Mon traitement</h2>
+            <x-section-title id="my-treatment-title" icon="inbox">Mon traitement</x-section-title>
             <div class="flex items-center gap-2">
                 <x-badge :color="$myRecipient->status->color()">{{ $myRecipient->status->label() }}</x-badge>
                 <x-deadline :due-at="$myRecipient->due_at" :closed="! $myRecipient->status->isOpen()" />
@@ -17,13 +17,16 @@
         @can('requestValidation', $myRecipient)
             <details class="mt-4 rounded-lg border border-slate-200 p-4 dark:border-slate-700">
                 <summary class="cursor-pointer font-medium">Transmettre au responsable</summary>
-                <form method="POST" action="{{ route('validations.store', $myRecipient) }}" class="mt-3 space-y-3">
+                @php($validatorName = \App\Services\ValidationService::validatorFor(auth()->user())?->name)
+                <form method="POST" action="{{ route('validations.store', $myRecipient) }}" class="mt-3 space-y-3" novalidate
+                      x-data="confirmSend({ fixed: @js($validatorName ? $validatorName.' (votre responsable)' : null) })" @submit="validate($event)">
                     @csrf
                     <p class="text-sm text-slate-500 dark:text-slate-400">
-                        Votre responsable ({{ \App\Services\ValidationService::validatorFor(auth()->user())?->name }}) validera ou refusera avant votre réponse.
+                        Votre responsable ({{ $validatorName }}) validera ou refusera avant votre réponse.
                     </p>
                     <x-form.textarea name="comment" label="Commentaire pour le responsable (facultatif)" rows="3" />
-                    <button type="submit" class="btn-secondary">Transmettre au responsable</button>
+                    <button type="submit" class="btn-secondary" :disabled="submitting">Transmettre au responsable</button>
+                    <x-send-confirmation title="Confirmer la transmission" question="Êtes-vous sûr de vouloir transmettre ce dossier pour validation à" confirm-label="Confirmer la transmission" />
                 </form>
             </details>
         @endcan
@@ -31,12 +34,17 @@
         @can('forward', $myRecipient)
             <details class="mt-4 rounded-lg border border-slate-200 p-4 dark:border-slate-700">
                 <summary class="cursor-pointer font-medium">Transmettre à un autre utilisateur</summary>
-                <form method="POST" action="{{ route('treatments.forward', $myRecipient) }}" class="mt-3 space-y-3">
+                <form method="POST" action="{{ route('treatments.forward', $myRecipient) }}" class="mt-3 space-y-3" novalidate
+                      x-data="confirmSend({ select: '#user_id' })" @submit="validate($event)">
                     @csrf
                     <x-form.select name="user_id" label="Destinataire" required placeholder="Sélectionner"
                                    :options="$forwardTargets" />
                     <x-form.field name="comment" label="Commentaire (facultatif)" />
-                    <button type="submit" class="btn-secondary">Transmettre</button>
+                    <p x-show="recipientError" x-cloak class="flex items-center gap-1.5 text-sm font-semibold text-red-600 dark:text-red-400" role="alert">
+                        <x-icon name="info" class="size-4" /> Aucun destinataire sélectionné : choisissez la personne à qui transmettre le dossier.
+                    </p>
+                    <button type="submit" class="btn-secondary" :disabled="submitting">Transmettre</button>
+                    <x-send-confirmation title="Confirmer la transmission" question="Êtes-vous sûr de vouloir transmettre ce dossier à" confirm-label="Confirmer la transmission" />
                 </form>
             </details>
         @endcan

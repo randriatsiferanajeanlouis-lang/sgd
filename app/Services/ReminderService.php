@@ -108,7 +108,8 @@ class ReminderService
             : "Échéance aujourd’hui pour le dossier {$dossier->reference}.";
 
         // Le super administrateur n'est jamais alerté.
-        $people = collect($overdue ? [$recipient->assignedUser, $dossier->creator] : [$recipient->assignedUser])
+        // Un expéditeur qui a mis le dossier à la corbeille n'est plus alerté.
+        $people = collect($overdue && ! $dossier->isTrashedBySender() ? [$recipient->assignedUser, $dossier->creator] : [$recipient->assignedUser])
             ->filter(fn (?User $person) => $person && ! $person->hasRole(Role::ADMIN))
             ->unique('id')
             ->values();

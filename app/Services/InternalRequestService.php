@@ -25,7 +25,7 @@ class InternalRequestService
     ) {}
 
     /**
-     * @param  array{subject: string, request_type_id: int, urgency_level_id?: int|null, due_at: string, description?: string|null, recipients: list<int>}  $data
+     * @param  array{subject: string, request_type_id: int, request_type_other?: string|null, urgency_level_id?: int|null, due_at: string, description?: string|null, recipients: list<int>}  $data
      * @param  list<UploadedFile>  $attachments
      */
     public function create(User $creator, array $data, array $attachments = []): Dossier
@@ -39,6 +39,7 @@ class InternalRequestService
                 'subject' => $data['subject'],
                 'description' => $data['description'] ?? null,
                 'request_type_id' => $data['request_type_id'],
+                'request_type_other' => $data['request_type_other'] ?? null,
                 'urgency_level_id' => $data['urgency_level_id'] ?? null,
                 'originating_department_id' => $creator->department_id,
                 'created_by' => $creator->id,

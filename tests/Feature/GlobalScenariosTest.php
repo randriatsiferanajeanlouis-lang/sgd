@@ -42,7 +42,7 @@ class GlobalScenariosTest extends TestCase
         $technique = $this->makeUser(Role::STAFF, 'TECHNIQUE');
 
         $this->post(route('login.store'), ['username' => 'prod.agent', 'password' => 'Secret2026'])->assertRedirect(route('dashboard'));
-        $this->get(route('dashboard'))->assertSee('Nouvelle demande')->assertSee('Voir tous les dossiers');
+        $this->get(route('dashboard'))->assertSee(route('requests.index').'"', false)->assertSee('Corbeille')->assertDontSee('Voir tous les dossiers');
         $dossier = $this->sendInternalRequest($production, [$technique], ['attachments' => [$this->pdf('bon.pdf')]]);
 
         $this->assertSame(1, $technique->unreadNotifications()->count());
@@ -162,7 +162,6 @@ class GlobalScenariosTest extends TestCase
         $this->get(route('external-requests.create'))->assertForbidden();
         $this->get(route('documents.download', $foreign->documents()->sole()))->assertForbidden();
         $this->get(route('admin.users.index'))->assertForbidden();
-        $this->get(route('dossiers.department'))->assertForbidden();
         $this->get(route('dossiers.history.pdf', $foreign))->assertForbidden();
     }
 
@@ -178,7 +177,7 @@ class GlobalScenariosTest extends TestCase
         $this->actingAs($employee)->post(route('validations.store', $ownDept->recipients()->sole()));
 
         $this->flushSession();
-        $this->actingAs($head)->get(route('dossiers.department'))->assertSee($ownDept->reference)->assertDontSee($otherDept->reference);
+        $this->actingAs($head)->get(route('dossiers.show', $ownDept))->assertOk();
         $this->get(route('dossiers.show', $otherDept))->assertForbidden();
         $this->post(route('validations.decide', $ownDept->validations()->sole()), ['decision' => 'reject', 'comment' => 'Non'])->assertRedirect();
 

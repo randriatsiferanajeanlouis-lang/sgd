@@ -44,6 +44,21 @@ class RequestType extends Model
         return filled($id) && static::query()->whereKey($id)->where('requires_complete_form', true)->exists();
     }
 
+    /** Type « Autre » : l'expéditeur précise lui-même le type de sa demande. */
+    public const OTHER_CODE = 'AUTRE';
+
+    public static function otherId(): ?int
+    {
+        $id = static::query()->where('code', self::OTHER_CODE)->value('id');
+
+        return $id === null ? null : (int) $id;
+    }
+
+    public static function isOther(mixed $id): bool
+    {
+        return filled($id) && (int) $id === static::otherId();
+    }
+
     /**
      * @return HasMany<Dossier, $this>
      */

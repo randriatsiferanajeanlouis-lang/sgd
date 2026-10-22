@@ -1,0 +1,45 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Department;
+use App\Models\Role;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
+use Tests\Concerns\InteractsWithDossiers;
+use Tests\TestCase;
+
+class NoModalFormTest extends TestCase
+{
+    use InteractsWithDossiers, RefreshDatabase;
+
+    protected bool $seed = true;
+
+    public function test_every_form_is_displayed_in_the_page_without_a_modal(): void
+    {
+        Storage::fake('dossiers');
+        $admin = $this->makeUser(Role::ADMIN, 'ADMINISTRATION');
+        $staff = $this->makeUser(Role::STAFF, 'PRODUCTION');
+        $dossier = $this->sendInternalRequest($staff, [$this->makeUser(Role::STAFF, 'TECHNIQUE')]);
+
+        $pages = [
+            [$admin, route('admin.users.create'), 'Créer un utilisateur'],
+            [$admin, route('admin.users.edit', $staff), $staff->name],
+            [$admin, route('admin.departments.create'), 'Créer un département'],
+            [$admin, route('admin.departments.edit', Department::query()->firstWhere('code', 'RSE')), 'Modifier le département'],
+            [$staff, route('profile.edit'), 'Modifier mes coordonnées'],
+            [$staff, route('password.change'), 'Changer mon mot de passe'],
+            [$staff, route('dossiers.edit', $dossier), 'Modifier le dossier'],
+        ];
+
+        foreach ($pages as [$user, $url, $title]) {
+            $this->actingAs($user)->get($url)->assertOk()
+                ->assertSee($title)
+                ->assertSee('id="page-form"', false)
+                ->assertDontSee('id="modal-form"', false)
+                ->assertDontSee('fixed inset-0 z-50 overflow-y-auto', false);
+        }
+
+        $this->assertFileDoesNotExist(resource_path('views/components/form/modal.blade.php'));
+    }
+}

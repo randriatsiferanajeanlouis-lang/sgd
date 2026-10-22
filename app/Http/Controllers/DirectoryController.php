@@ -25,7 +25,7 @@ class DirectoryController extends Controller
         return view('directory.index', [
             // Dossiers envoyés par l'utilisateur, comptés une fois par département destinataire.
             'sentCounts' => DossierRecipient::query()
-                ->whereHas('dossier', fn (Builder $dossier) => $dossier->where('created_by', $request->user()->id))
+                ->whereHas('dossier', fn (Builder $dossier) => $dossier->sentBy($request->user()))
                 ->selectRaw('department_id, COUNT(DISTINCT dossier_id) as total')
                 ->groupBy('department_id')
                 ->pluck('total', 'department_id'),
@@ -50,7 +50,7 @@ class DirectoryController extends Controller
         Gate::authorize('viewDirectory', Department::class);
 
         $dossiers = Dossier::query()
-            ->where('created_by', $request->user()->id)
+            ->sentBy($request->user())
             ->whereHas('recipients', fn (Builder $recipient) => $recipient->where('department_id', $department->id))
             ->with(['requestType', 'creator', 'externalRequester', 'recipients.assignedUser'])
             ->latest('id')

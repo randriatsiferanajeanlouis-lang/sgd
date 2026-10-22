@@ -1,8 +1,8 @@
 @if ($dossier->isExternal() && auth()->user()->hasPermission('manage_external_requests'))
     @php($decisions = $dossier->responses->whereNotNull('decision'))
 
-    <section class="card border-violet-300 dark:border-violet-800" aria-labelledby="hr-title">
-        <h2 id="hr-title" class="text-lg font-semibold">Suivi RH</h2>
+    <section class="card border-t-4 border-t-violet-500 dark:border-t-violet-400" aria-labelledby="hr-title">
+        <x-section-title id="hr-title" icon="user">Suivi RH</x-section-title>
 
         <div class="mt-3 flex flex-wrap gap-2 text-sm">
             <x-badge color="green">{{ $decisions->where('decision', \App\Enums\ResponseDecision::Positive)->count() }} décision(s) positive(s)</x-badge>

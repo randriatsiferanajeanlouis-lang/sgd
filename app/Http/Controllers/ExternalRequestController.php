@@ -13,6 +13,7 @@ use App\Models\RequestType;
 use App\Models\UrgencyLevel;
 use App\Services\ExternalRequestService;
 use App\Support\Search;
+use App\Support\SubmissionGuard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -46,7 +47,7 @@ class ExternalRequestController extends Controller
 
         if (Search::wantsSuggestions()) {
             return Search::suggestions($query, fn (Dossier $dossier) => [
-                'label' => $dossier->reference.' — '.$dossier->subject,
+                'label' => $dossier->reference.' — '.$dossier->shortSubject(),
                 'detail' => collect([$dossier->externalRequester?->full_name, $dossier->externalRequester?->organization, $dossier->status->label()])->filter()->implode(' · '),
                 'url' => route('dossiers.show', $dossier),
             ]);
@@ -87,6 +88,10 @@ class ExternalRequestController extends Controller
 
     public function store(StoreExternalRequest $request): RedirectResponse
     {
+        if (SubmissionGuard::alreadySubmitted($request)) {
+            return redirect()->route('external-requests.index')->with('warning', 'Cette demande externe a déjà été enregistrée : le second envoi a été ignoré.');
+        }
+
         $dossier = $this->externalRequests->register($request->user(), $request->safe()->except('attachments'), $request->file('attachments', []));
 
         return redirect()->route('dossiers.show', $dossier)

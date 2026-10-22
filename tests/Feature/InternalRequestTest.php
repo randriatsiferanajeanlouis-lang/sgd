@@ -196,20 +196,55 @@ class InternalRequestTest extends TestCase
         $this->assertSame(0, Dossier::query()->count());
     }
 
-    public function test_department_head_sees_department_dossiers(): void
+    public function test_department_dossiers_page_and_validations_button_are_removed_for_managers(): void
     {
         $head = $this->makeUser(Role::DEPARTMENT_HEAD, 'TECHNIQUE');
         $sender = $this->makeUser(Role::STAFF, 'PRODUCTION');
         $toTechnique = $this->sendInternalRequest($sender, [$this->makeUser(Role::STAFF, 'TECHNIQUE')]);
-        $toRse = $this->sendInternalRequest($sender, [$this->makeUser(Role::STAFF, 'RSE')], ['subject' => 'Autre sujet']);
         $this->flushSession();
 
-        $this->actingAs($head)->get(route('dossiers.department'))
-            ->assertOk()
-            ->assertSee($toTechnique->reference)
-            ->assertDontSee($toRse->reference);
+        $this->assertFalse(\Illuminate\Support\Facades\Route::has('dossiers.department'));
+        $this->actingAs($head)->get('/dossiers/department')->assertNotFound();
+        $this->get(route('dashboard'))->assertDontSee('Dossiers du département')->assertDontSee(route('validations.index').'"', false);
 
-        $this->actingAs($sender)->get(route('dossiers.department'))->assertForbidden();
+        $items = collect(\App\Support\Navigation::for($head))->flatMap(fn ($section) => array_column($section['items'], 'label'))->all();
+        $this->assertNotContains('Dossiers du département', $items);
+        $this->assertNotContains('Validations', $items);
+
+        // Le responsable garde l'accès aux dossiers de son département depuis leur fiche.
+        $this->get(route('dossiers.show', $toTechnique))->assertOk();
+    }
+
+    public function test_new_request_opens_a_two_column_page_without_modal(): void
+    {
+        $sender = $this->makeUser(Role::STAFF, 'PRODUCTION');
+        $recipient = $this->makeUser(Role::STAFF, 'TECHNIQUE');
+
+        // Le bouton « Nouvelle demande » de la liste « Demande » mène à la page dédiée.
+        $this->actingAs($sender)->get(route('requests.index'))->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page->where('urls.create', route('dossiers.create')));
+
+        $this->get(route('dossiers.create'))->assertOk()
+            ->assertDontSee('id="modal-form"', false)
+            ->assertDontSee('formSteps(', false)
+            ->assertSee('formColumns(', false)
+            ->assertSee('data-step="1"', false)
+            ->assertSee('data-step="2"', false)
+            ->assertSee('xl:grid-cols-2', false)
+            ->assertSeeInOrder(['Demande et échéance', 'Destinataires et description', 'Envoyer la demande']);
+
+        // Erreurs : retour sur la page, colonnes en erreur signalées.
+        $this->from(route('dossiers.create'))->post(route('dossiers.store'), ['subject' => ''])
+            ->assertRedirect(route('dossiers.create'))
+            ->assertSessionHasErrors(['subject', 'recipients']);
+        $this->from(route('dossiers.create'))->followingRedirects()->post(route('dossiers.store'), ['subject' => ''])
+            ->assertOk()
+            ->assertSee('Le formulaire contient des erreurs')
+            ->assertSee('ring-red-300', false);
+
+        // Envoi complet : le dossier est créé et le destinataire prévenu.
+        $dossier = $this->sendInternalRequest($sender, [$recipient], ['subject' => 'Demande depuis la nouvelle page']);
+        $this->assertSame('Demande depuis la nouvelle page', $dossier->subject);
+        $this->assertSame(1, $recipient->notifications()->count());
     }
 
     public function test_a_complete_form_type_requires_urgency_and_description(): void

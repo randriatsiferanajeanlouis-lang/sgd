@@ -19,6 +19,8 @@
         </button>
     </form>
 
+    <x-pwa-install variant="full" class="mt-4" />
+
     <p class="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
         Mot de passe oublié ou pas encore de compte ? Adressez-vous à l’administrateur.
     </p>

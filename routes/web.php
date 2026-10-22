@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\DepartmentController;
+use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserPasswordController;
@@ -11,6 +13,7 @@ use App\Http\Controllers\DepartmentMemberController;
 use App\Http\Controllers\DirectoryController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DossierController;
+use App\Http\Controllers\DossierTrashController;
 use App\Http\Controllers\ExternalRequestController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\NotificationController;
@@ -51,12 +54,17 @@ Route::middleware(['auth', 'account.usable'])->group(function () {
     Route::get('/directory/departments/{department}/members', [DirectoryController::class, 'members'])->name('directory.members');
 
     Route::get('/dossiers', [DossierController::class, 'index'])->name('dossiers.index');
-    Route::get('/dossiers/department', [DossierController::class, 'department'])->name('dossiers.department');
     Route::get('/dossiers/create', [DossierController::class, 'create'])->name('dossiers.create');
     Route::post('/dossiers', [DossierController::class, 'store'])->name('dossiers.store');
     Route::get('/dossiers/{dossier}', [DossierController::class, 'show'])->name('dossiers.show');
     Route::get('/dossiers/{dossier}/edit', [DossierController::class, 'edit'])->name('dossiers.edit');
     Route::put('/dossiers/{dossier}', [DossierController::class, 'update'])->name('dossiers.update');
+    Route::delete('/dossiers/{dossier}', [DossierController::class, 'destroy'])->name('dossiers.destroy');
+    Route::get('/demandes', [DossierController::class, 'requests'])->name('requests.index');
+    Route::get('/demandes/export', [DossierController::class, 'exportRequests'])->name('requests.export');
+    Route::get('/corbeille', [DossierTrashController::class, 'index'])->name('trash.index');
+    Route::post('/corbeille/{dossier}/restore', [DossierTrashController::class, 'restore'])->name('trash.restore');
+    Route::delete('/corbeille/{dossier}', [DossierTrashController::class, 'destroy'])->name('trash.destroy');
     Route::get('/history', [HistoryController::class, 'index'])->name('history.index');
     Route::get('/dossiers/{dossier}/history.pdf', [HistoryController::class, 'pdf'])->name('dossiers.history.pdf');
     Route::get('/dossiers/{dossier}/history.docx', [HistoryController::class, 'word'])->name('dossiers.history.word');
@@ -115,6 +123,9 @@ Route::middleware(['auth', 'account.usable'])->group(function () {
             Route::put('/departments/{department}', [DepartmentController::class, 'update'])->name('departments.update');
             Route::patch('/departments/{department}/toggle', [DepartmentController::class, 'toggle'])->name('departments.toggle');
         });
+
+        Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
+        Route::get('/activity', [ActivityLogController::class, 'index'])->middleware('can:view_activity_log')->name('activity.index');
 
         Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
         Route::post('/settings/request-types', [SettingsController::class, 'storeRequestType'])->name('settings.request-types.store');

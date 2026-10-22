@@ -7,6 +7,7 @@ use App\Models\Dossier;
 use App\Models\Role;
 use App\Services\DossierTrends;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Concerns\InteractsWithDossiers;
 use Tests\TestCase;
 
@@ -46,7 +47,10 @@ class DashboardTrendsTest extends TestCase
     {
         $admin = $this->makeUser(Role::ADMIN, 'ADMINISTRATION');
 
-        $this->actingAs($admin)->get(route('dashboard'))->assertOk()->assertSee('data-testid="trend-chart"', false);
+        $this->actingAs($admin)->get(route('dashboard'))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Dashboard')
+            ->where('isAdmin', true)
+            ->has('trends.periods.month.series', Department::query()->active()->count()));
 
         $series = collect(app(DossierTrends::class)->for($admin)['periods']['month']['series']);
         $this->assertSame(Department::query()->active()->count(), $series->count());
@@ -59,7 +63,7 @@ class DashboardTrendsTest extends TestCase
         $this->actingAs($this->makeUser(Role::STAFF, 'PRODUCTION'))
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertDontSee('data-testid="trend-chart"', false);
+            ->assertInertia(fn (Assert $page) => $page->component('Dashboard')->where('trends', null));
     }
 
     public function test_every_user_gets_charts_of_their_own_activity(): void
@@ -74,11 +78,14 @@ class DashboardTrendsTest extends TestCase
         $this->assertSame(1, $week['Reçus']['total']);
         $this->assertSame(2, $week['Envoyés']['total']);
 
-        $response = $this->actingAs($recipient)->get(route('dashboard'))
+        $this->actingAs($recipient)->get(route('dashboard'))
             ->assertOk()
-            ->assertSee('data-testid="personal-chart"', false)
-            ->assertSee('Mes traitements');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard')
+                ->has('personalTrends.periods.week.series', 2)
+                ->has('myTreatments', 4)
+                ->where('stats.0.value', 2));
 
-        $this->assertSame(2, array_sum($response->viewData('myTreatments')->all()));
+        $this->assertSame(2, \App\Models\DossierRecipient::query()->where('assigned_user_id', $recipient->id)->count());
     }
 }

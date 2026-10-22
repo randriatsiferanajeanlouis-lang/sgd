@@ -3,40 +3,180 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+@import 'tw-animate-css';
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Charte inspirée du site de l'Université de Mahajanga :
- * bleu roi #1a1a8c, bleu nuit #0c0c4a, lavande #ececfb, gris froids,
- * police Manrope, angles peu arrondis, titres serrés, sur-titres en capitales.
+ * Charte graphique SOGEDIPROMA — thème sombre « tableau de bord » (surfaces
+ * quasi noires, accent cyan) et son équivalent clair. Contrastes vérifiés
+ * WCAG AA : cyan #0a7d96 sur blanc (4,8:1), texte sombre sur cyan #22d3ee (10,7:1).
+ *
+ * Deux familles de jetons :
+ *  - brand / univ / slate : utilisés par les pages Blade ;
+ *  - background, card, primary… : jetons shadcn/ui des pages React.
  */
 @theme {
     --font-sans: 'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif, 'Apple Color Emoji',
         'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
-    --color-brand-50: #ececfb;
-    --color-brand-100: #dedffd;
-    --color-brand-300: #a5a5f5;
-    --color-brand-400: #4a45f0;
-    --color-brand-500: #1a1a8c;
-    --color-brand-600: #2b2ba8;
-    --color-brand-700: #11116f;
-    --color-brand-900: #0c0c4a;
+    /* Accent cyan */
+    --color-brand-50: #ecfeff;
+    --color-brand-100: #cffafe;
+    --color-brand-200: #a5f3fc;
+    --color-brand-300: #67e8f9;
+    --color-brand-400: #22d3ee;
+    --color-brand-500: #0a7d96;
+    --color-brand-600: #086a80;
+    --color-brand-700: #075568;
+    --color-brand-800: #0b3f4c;
+    --color-brand-900: #083344;
 
-    /* Accents de la charte */
-    --color-univ-navy: #0c0c4a;
-    --color-univ-deep: #14144b;
-    --color-univ-electric: #2323fe;
-    --color-univ-ink: #202334;
-    --color-univ-muted: #555968;
-    --color-univ-line: #dedfe5;
-    --color-univ-surface: #f4f4f6;
+    /* Neutres du thème clair */
+    --color-univ-navy: #0c1017;
+    --color-univ-deep: #075568;
+    --color-univ-electric: #06b6d4;
+    --color-univ-ink: #0f172a;
+    --color-univ-muted: #5b6576;
+    --color-univ-line: #e3e7ee;
+    --color-univ-surface: #f5f7fa;
 
-    /* Mode sombre : surfaces bleu nuit de la charte */
-    --color-slate-700: #2c2c5e;
-    --color-slate-800: #1c1c4a;
-    --color-slate-900: #121238;
-    --color-slate-950: #0a0a26;
+    /* Surfaces du thème sombre (quasi noir, légèrement bleuté) */
+    --color-slate-700: #2a313c;
+    --color-slate-800: #1b212a;
+    --color-slate-900: #0f1319;
+    --color-slate-950: #0a0d12;
+}
+
+/* Jetons shadcn/ui — thème clair */
+:root {
+    --radius: 0.75rem;
+    --background: #f5f7fa;
+    --foreground: #0f172a;
+    --card: #ffffff;
+    --card-foreground: #0f172a;
+    --popover: #ffffff;
+    --popover-foreground: #0f172a;
+    --primary: #0a7d96;
+    --primary-foreground: #ffffff;
+    --secondary: #eef2f6;
+    --secondary-foreground: #0f172a;
+    --muted: #eef2f6;
+    --muted-foreground: #5b6576;
+    --accent: #e6f9fc;
+    --accent-foreground: #075568;
+    --destructive: #dc2626;
+    --border: #e3e7ee;
+    --input: #d5dbe4;
+    --ring: #06b6d4;
+    --chart-1: #0891b2;
+    --chart-2: #e11d48;
+    --chart-3: #f59e0b;
+    --chart-4: #10b981;
+    --chart-5: #8b5cf6;
+    --sidebar: #ffffff;
+    --sidebar-foreground: #334155;
+    --sidebar-primary: #0a7d96;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #eef7fa;
+    --sidebar-accent-foreground: #0f172a;
+    --sidebar-border: #e3e7ee;
+    --sidebar-ring: #06b6d4;
+}
+
+/* Jetons shadcn/ui — thème sombre (image de référence) */
+.dark {
+    --background: #0a0d12;
+    --foreground: #e6e9ef;
+    --card: #0f1319;
+    --card-foreground: #e6e9ef;
+    --popover: #11161d;
+    --popover-foreground: #e6e9ef;
+    --primary: #22d3ee;
+    --primary-foreground: #0a0d12;
+    --secondary: #1b212a;
+    --secondary-foreground: #e6e9ef;
+    --muted: #161b23;
+    --muted-foreground: #8b95a7;
+    --accent: #12303a;
+    --accent-foreground: #a5f3fc;
+    --destructive: #f43f5e;
+    --border: #1d232c;
+    --input: #262d38;
+    --ring: #22d3ee;
+    --chart-1: #22d3ee;
+    --chart-2: #f43f5e;
+    --chart-3: #fbbf24;
+    --chart-4: #34d399;
+    --chart-5: #a78bfa;
+    --sidebar: #0c0f14;
+    --sidebar-foreground: #c5ccd8;
+    --sidebar-primary: #22d3ee;
+    --sidebar-primary-foreground: #0a0d12;
+    --sidebar-accent: #151b23;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #1a2029;
+    --sidebar-ring: #22d3ee;
+}
+
+/*
+ * Barre latérale « Midnight » (midnightblue #191970) en mode clair. La barre
+ * porte la classe « dark » pour que ses textes et son logo prennent les couleurs
+ * claires ; en mode sombre, elle garde la teinte quasi noire du thème.
+ * Contrastes (WCAG AA) : entrées 11,4:1, titres de section 5,8:1.
+ */
+:root:not(.dark) .sidebar-midnight {
+    --sidebar: #191970;
+    --sidebar-foreground: #dbe0ff;
+    --sidebar-accent: rgb(255 255 255 / 0.1);
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: rgb(255 255 255 / 0.12);
+}
+
+@theme inline {
+    --radius-sm: calc(var(--radius) - 4px);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 4px);
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/*
+ * Thème sombre : les gris « slate-500 » des pages Blade sans variante sombre
+ * passent en slate-400 pour garder un contraste suffisant (WCAG AA).
+ */
+.dark .text-slate-500 {
+    color: var(--color-slate-400);
 }
 
 [x-cloak] {
@@ -50,6 +190,13 @@
 }
 
 @layer base {
+    /* Couleur de bordure par défaut (composants shadcn/ui) */
+    *,
+    ::before,
+    ::after {
+        border-color: var(--color-border);
+    }
+
     input:not([type='checkbox'], [type='radio'], [type='file']):focus,
     select:focus,
     textarea:focus {
@@ -72,8 +219,13 @@
 }
 
 ::selection {
-    background: var(--color-brand-50);
-    color: var(--color-brand-500);
+    background: var(--color-brand-100);
+    color: var(--color-brand-700);
+}
+
+.dark ::selection {
+    background: var(--color-brand-800);
+    color: var(--color-brand-100);
 }
 
 /* Sur-titre en capitales, comme les rubriques du site universitaire */
@@ -82,15 +234,15 @@
 }
 
 @utility btn {
-    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-bold whitespace-nowrap transition disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-bold whitespace-nowrap transition disabled:cursor-not-allowed disabled:opacity-50;
 }
 
 @utility btn-primary {
-    @apply btn border border-brand-500 bg-brand-500 text-white hover:-translate-y-px hover:border-brand-600 hover:bg-brand-600 dark:border-brand-400 dark:bg-brand-400 dark:hover:bg-brand-600;
+    @apply btn border border-brand-500 bg-brand-500 text-white shadow-sm hover:-translate-y-px hover:border-brand-600 hover:bg-brand-600 dark:border-brand-400 dark:bg-brand-400 dark:text-slate-950 dark:hover:border-brand-300 dark:hover:bg-brand-300;
 }
 
 @utility btn-secondary {
-    @apply btn border border-univ-line bg-white text-brand-500 hover:border-brand-300 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-900 dark:text-brand-100 dark:hover:bg-slate-800;
+    @apply btn border border-univ-line bg-white text-univ-ink hover:border-brand-300 hover:bg-brand-50 hover:text-brand-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-brand-400/40 dark:hover:bg-slate-800 dark:hover:text-brand-300;
 }
 
 @utility btn-danger {
@@ -102,7 +254,7 @@
 }
 
 @utility card {
-    @apply rounded-lg border border-univ-line bg-white p-6 shadow-[0_1px_2px_rgb(21_33_43/0.04)] dark:border-slate-800 dark:bg-slate-900 dark:shadow-none;
+    @apply rounded-xl border border-univ-line bg-white p-6 shadow-[0_1px_2px_rgb(15_23_42/0.04)] dark:border-slate-800 dark:bg-slate-900 dark:shadow-none;
 }
 
 /* Tuile de chiffre clé (tableau de bord, statistiques) : fond teinté, icône ronde, valeur centrée. */
@@ -114,7 +266,7 @@
     @apply w-full text-left text-sm;
 
     & th {
-        @apply border-b-2 border-brand-500 bg-univ-surface px-4 py-3 text-[11px] font-extrabold tracking-[0.08em] text-brand-500 uppercase dark:border-brand-300 dark:bg-slate-950/40 dark:text-brand-300;
+        @apply border-b border-univ-line bg-univ-surface/70 px-4 py-3 text-[11px] font-bold tracking-[0.08em] text-univ-muted uppercase dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-400;
     }
 
     & td {

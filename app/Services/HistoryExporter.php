@@ -62,7 +62,7 @@ class HistoryExporter
         $header = [
             'Référence' => $dossier->reference,
             'Objet' => $dossier->subject,
-            'Type' => $dossier->requestType->name,
+            'Type' => $dossier->typeLabel(),
             'Expéditeur' => $dossier->isExternal()
                 ? trim(($dossier->externalRequester?->full_name ?? '').' '.($dossier->externalRequester?->organization ? '('.$dossier->externalRequester->organization.')' : '')).' — enregistré par '.$dossier->creator->name
                 : $dossier->creator->name,

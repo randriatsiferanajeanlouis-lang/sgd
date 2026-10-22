@@ -1,10 +1,11 @@
 <section class="card overflow-x-auto p-0" aria-labelledby="recipients-title">
-    <h2 id="recipients-title" class="px-6 pt-5 text-lg font-semibold">Destinataires</h2>
-    <table class="data-table mt-3">
+    <div class="px-6 pt-5">
+        <x-section-title id="recipients-title" icon="users" :count="$dossier->recipients->count()">Destinataires</x-section-title>
+    </div>
+    <table class="data-table mt-4">
         <thead>
             <tr>
                 <th>Destinataire</th>
-                <th>Département</th>
                 <th>Statut</th>
                 <th>Réponse</th>
                 <th>Échéance</th>
@@ -14,11 +15,22 @@
         <tbody>
             @foreach ($dossier->recipients as $recipient)
                 <tr>
-                    <td data-label="Destinataire" class="font-medium">{{ $recipient->assignedUser->name }}</td>
-                    <td data-label="Département">{{ $recipient->department->name }}</td>
+                    <td data-label="Destinataire">
+                        <div class="flex items-center gap-3">
+                            <x-avatar :user="$recipient->assignedUser" size="size-8" class="shrink-0 text-xs" />
+                            <div class="min-w-0">
+                                <div class="font-semibold whitespace-nowrap">{{ $recipient->assignedUser->name }}</div>
+                                <div class="text-xs text-slate-500 dark:text-slate-400">{{ collect([$recipient->assignedUser->job_title, $recipient->department->name])->filter()->implode(' · ') }}</div>
+                            </div>
+                        </div>
+                    </td>
                     <td data-label="Statut"><x-badge :color="$recipient->status->color()">{{ $recipient->status->label() }}</x-badge></td>
                     <td data-label="Réponse" class="text-xs text-slate-500 dark:text-slate-400">
-                        {{ $recipient->answered_at?->format('d/m/Y H:i') ?? '—' }}
+                        @if ($recipient->answered_at)
+                            <span class="font-medium text-slate-700 dark:text-slate-200">{{ $recipient->answered_at->format('d/m/Y') }}</span> à {{ $recipient->answered_at->format('H:i') }}
+                        @else
+                            En attente
+                        @endif
                         @if ($recipient->archived_at)
                             <div>Archivé le {{ $recipient->archived_at->format('d/m/Y') }}</div>
                         @endif

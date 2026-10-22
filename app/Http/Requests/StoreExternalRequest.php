@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Enums\ReceptionChannel;
 use App\Enums\RequestScope;
+use App\Http\Requests\Concerns\PrecisesOtherRequestType;
 use App\Models\Dossier;
 use App\Models\RequestType;
 use App\Services\DocumentStorage;
@@ -17,6 +18,8 @@ use Illuminate\Validation\Rule;
  */
 class StoreExternalRequest extends FormRequest
 {
+    use PrecisesOtherRequestType;
+
     public function authorize(): bool
     {
         return $this->user()->can('createExternal', Dossier::class);
@@ -48,6 +51,7 @@ class StoreExternalRequest extends FormRequest
             'recipients.*' => ['integer', 'distinct', Rule::exists('users', 'id')->where('is_active', true)->whereNotNull('department_id'), Rule::notIn([$this->user()->id])],
             'attachments' => ['nullable', 'array', 'max:10'],
             'attachments.*' => DocumentStorage::uploadRules(),
+            ...$this->otherRequestTypeRules(),
         ];
     }
 
@@ -64,6 +68,7 @@ class StoreExternalRequest extends FormRequest
             'requester_phone.required' => 'Le téléphone est obligatoire pour ce type de demande.',
             'requester_email.required' => 'L’e-mail est obligatoire pour ce type de demande.',
             'description.required' => 'La description est obligatoire pour ce type de demande.',
+            ...$this->otherRequestTypeMessages(),
         ];
     }
 }

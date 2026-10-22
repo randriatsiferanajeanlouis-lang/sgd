@@ -1,10 +1,10 @@
 @if ($dossier->validations->isNotEmpty())
     <section class="card" aria-labelledby="validations-title">
-        <h2 id="validations-title" class="text-lg font-semibold">Validations hiérarchiques</h2>
+        <x-section-title id="validations-title" icon="check" :count="$dossier->validations->count()">Validations hiérarchiques</x-section-title>
 
         <ol class="mt-4 space-y-4">
             @foreach ($dossier->validations as $validation)
-                <li class="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+                <li class="rounded-lg border border-univ-line p-4 dark:border-slate-800">
                     <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
                         <span>
                             <span class="font-semibold">{{ $validation->requester->name }}</span> → {{ $validation->validator->name }}

@@ -84,33 +84,15 @@
             </table>
         </section>
 
-        {{-- Permissions --}}
-        <section x-show="tab === 'permissions'" x-cloak class="space-y-6">
-            @foreach ($roles as $role)
-                <form method="POST" action="{{ route('admin.settings.roles.permissions', $role) }}" class="card">
-                    @csrf
-                    @method('PUT')
-                    <div class="flex flex-wrap items-center justify-between gap-2">
-                        <h2 class="text-lg font-semibold">{{ $role->label }}</h2>
-                        @can('manage_permissions')<button type="submit" class="btn-primary">Enregistrer</button>@endcan
-                    </div>
-                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ $role->description }}</p>
-                    <div class="mt-4 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                        @foreach ($permissionGroups as $group => $permissions)
-                            <fieldset>
-                                <legend class="mb-2 text-sm font-semibold">{{ $group }}</legend>
-                                @foreach ($permissions as $permission)
-                                    <label class="flex items-start gap-2 py-0.5 text-sm">
-                                        <input type="checkbox" name="permissions[]" value="{{ $permission->id }}" class="mt-0.5 size-4"
-                                               @checked($role->permissions->contains('id', $permission->id))>
-                                        <span>{{ $permission->label }} <span class="font-mono text-xs text-slate-400">{{ $permission->name }}</span></span>
-                                    </label>
-                                @endforeach
-                            </fieldset>
-                        @endforeach
-                    </div>
-                </form>
-            @endforeach
+        {{-- Permissions : écran dédié --}}
+        <section x-show="tab === 'permissions'" x-cloak class="card flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <h2 class="text-lg font-semibold">Rôles et permissions</h2>
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Les permissions sont regroupées par domaine, avec une fiche par rôle et une matrice de synthèse.</p>
+            </div>
+            @can('manage_permissions')
+                <a href="{{ route('admin.roles.index') }}" class="btn-primary"><x-icon name="shield" class="size-4" /> Ouvrir l’écran des rôles</a>
+            @endcan
         </section>
 
         {{-- Réglages généraux --}}

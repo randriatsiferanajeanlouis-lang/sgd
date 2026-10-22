@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\DossierOrigin;
 use App\Enums\DossierStatus;
 use App\Enums\RecipientStatus;
 use App\Enums\RequestScope;
@@ -13,15 +14,21 @@ use App\Models\RequestType;
 use App\Models\UrgencyLevel;
 use App\Models\User;
 use App\Services\DossierEditor;
+use App\Services\DossierTrash;
 use App\Services\InternalRequestService;
 use App\Services\TreatmentService;
+use App\Support\Deadline;
 use App\Support\Search;
+use App\Support\SubmissionGuard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DossierController extends Controller
 {
@@ -41,10 +48,10 @@ class DossierController extends Controller
             'received' => $query->whereHas('recipients', fn (Builder $recipient) => $recipient
                 ->where('assigned_user_id', $user->id)
                 ->where('status', '!=', RecipientStatus::Archived->value)),
-            'sent' => $query->where('created_by', $user->id)->where('status', '!=', DossierStatus::Archived->value),
+            'sent' => $query->sentBy($user)->where('status', '!=', DossierStatus::Archived->value),
             'archived' => $query->where(fn (Builder $archived) => $archived
                 ->whereHas('recipients', fn (Builder $recipient) => $recipient->where('assigned_user_id', $user->id)->where('status', RecipientStatus::Archived->value))
-                ->orWhere(fn (Builder $sent) => $sent->where('created_by', $user->id)->where('status', DossierStatus::Archived->value))),
+                ->orWhere(fn (Builder $sent) => $sent->sentBy($user)->where('status', DossierStatus::Archived->value))),
             default => null,
         };
 
@@ -76,26 +83,142 @@ class DossierController extends Controller
     }
 
     /**
-     * Dossiers du département (vue Responsable).
+     * Demande : les demandes internes envoyées par l'utilisateur (hors corbeille).
      */
-    public function department(Request $request): View|JsonResponse
+    public function requests(Request $request): InertiaResponse|JsonResponse
     {
-        abort_unless($request->user()->hasPermission('view_department_dossiers'), 403);
-
-        $query = Dossier::query()
-            ->concerningDepartment($request->user()->department_id)
-            ->with(['requestType', 'creator', 'externalRequester', 'recipients.assignedUser']);
-
-        $query = $this->applyFilters($query, $request)->latest('id');
+        Gate::authorize('createInternal', Dossier::class);
 
         if (Search::wantsSuggestions()) {
-            return $this->suggestions($query);
+            return $this->suggestions($this->requestsQuery($request)->with(['requestType', 'creator', 'externalRequester'])->latest('id'));
         }
 
-        return view('dossiers.department', [
-            'department' => $request->user()->department,
-            'dossiers' => $query->paginate(15)->withQueryString(),
+        [$sort, $direction, $grouped] = $this->requestsSorting($request);
+        $statusOrder = collect(DossierStatus::cases())->map(fn (DossierStatus $status) => "'{$status->value}'")->implode(',');
+
+        $dossiers = $this->requestsQuery($request)
+            ->with(['requestType', 'recipients.assignedUser', 'latestActivity.user'])
+            ->withCount(['documents' => fn (Builder $documents) => $documents->active()])
+            ->when($grouped, fn (Builder $query) => $query->orderByRaw("FIELD(status, {$statusOrder})"))
+            ->orderBy($sort, $direction)
+            ->orderByDesc('id')
+            ->paginate(25)
+            ->withQueryString()
+            ->through(fn (Dossier $dossier) => $this->requestRow($dossier, $request->user()));
+
+        $counts = Dossier::query()->sentBy($request->user())->where('origin', DossierOrigin::Internal->value)
+            ->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+
+        return Inertia::render('Requests/Index', [
+            'title' => 'Mes demandes',
+            'dossiers' => $dossiers,
+            'counts' => collect(DossierStatus::cases())->mapWithKeys(fn (DossierStatus $status) => [$status->value => (int) ($counts[$status->value] ?? 0)]),
+            'statuses' => collect(DossierStatus::cases())->map(fn (DossierStatus $status) => ['value' => $status->value, 'label' => $status->label(), 'color' => $status->color()]),
+            'filters' => [
+                'search' => (string) $request->string('search'),
+                'status' => (string) $request->string('status'),
+                'sort' => $sort,
+                'dir' => $direction,
+                'group' => $grouped,
+            ],
+            'urls' => [
+                'index' => route('requests.index'),
+                'create' => route('dossiers.create'),
+                'dossiers' => $request->user()->hasPermission('view_own_dossiers') ? route('dossiers.index') : null,
+                'export' => route('requests.export'),
+            ],
         ]);
+    }
+
+    /**
+     * Export CSV (Excel) des demandes, avec les mêmes filtres que la liste.
+     */
+    public function exportRequests(Request $request): StreamedResponse
+    {
+        Gate::authorize('createInternal', Dossier::class);
+
+        [$sort, $direction] = $this->requestsSorting($request);
+        $rows = $this->requestsQuery($request)->with(['requestType', 'recipients.assignedUser'])->orderBy($sort, $direction)->get();
+
+        return response()->streamDownload(function () use ($rows) {
+            $out = fopen('php://output', 'wb');
+            fwrite($out, "\xEF\xBB\xBF"); // BOM : accents corrects dans Excel
+            fputcsv($out, ['Référence', 'Objet', 'Type', 'Statut', 'Destinataires', 'Créée le', 'Échéance'], ';');
+            foreach ($rows as $dossier) {
+                fputcsv($out, [
+                    $dossier->reference,
+                    $dossier->subject,
+                    $dossier->typeLabel(),
+                    $dossier->status->label(),
+                    $dossier->recipients->map(fn ($recipient) => $recipient->assignedUser->name.' ('.$recipient->status->label().')')->implode(', '),
+                    $dossier->created_at->format('d/m/Y H:i'),
+                    $dossier->due_at?->format('d/m/Y') ?? '',
+                ], ';');
+            }
+            fclose($out);
+        }, 'mes-demandes-'.now()->format('Y-m-d').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    private function requestsQuery(Request $request): Builder
+    {
+        return $this->applyFilters(
+            Dossier::query()->sentBy($request->user())->where('origin', DossierOrigin::Internal->value),
+            $request,
+        );
+    }
+
+    /**
+     * @return array{0: string, 1: string, 2: bool} colonne de tri, sens, regroupement par statut
+     */
+    private function requestsSorting(Request $request): array
+    {
+        $sort = in_array($request->query('sort'), ['reference', 'subject', 'created_at', 'updated_at', 'due_at'], true) ? $request->query('sort') : 'created_at';
+        $direction = $request->query('dir') === 'asc' ? 'asc' : 'desc';
+
+        return [$sort, $direction, $request->query('group', '1') !== '0'];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function requestRow(Dossier $dossier, User $user): array
+    {
+        $closed = in_array($dossier->status, [DossierStatus::Answered, DossierStatus::Archived], true);
+        $deadline = Deadline::describe($dossier->due_at, $closed);
+        $changedAt = $dossier->latestActivity?->created_at ?? $dossier->updated_at;
+
+        return [
+            'id' => $dossier->id,
+            'reference' => $dossier->reference,
+            'subject' => $dossier->subject,
+            'type' => $dossier->typeLabel(),
+            'status' => ['value' => $dossier->status->value, 'label' => $dossier->status->label(), 'color' => $dossier->status->color()],
+            'recipients' => $dossier->recipients->map(fn ($recipient) => [
+                'name' => $recipient->assignedUser->name,
+                'status' => $recipient->status->label(),
+                'color' => $recipient->status->color(),
+            ])->values(),
+            'changedAt' => $changedAt->format('d/m/Y H:i'),
+            'changedBy' => $dossier->latestActivity?->user?->name ?? $user->name,
+            'createdAt' => $dossier->created_at->format('d/m/Y H:i'),
+            'dueAt' => $dossier->due_at?->format('d/m/Y'),
+            'deadline' => $deadline ? ['label' => $deadline['label'], 'overdue' => $deadline['overdue']] : null,
+            'documents' => $dossier->documents_count,
+            'showUrl' => route('dossiers.show', $dossier),
+        ];
+    }
+
+    /**
+     * « Supprimer » : le dossier part dans la corbeille de l'expéditeur.
+     */
+    public function destroy(Dossier $dossier, DossierTrash $trash): RedirectResponse
+    {
+        Gate::authorize('delete', $dossier);
+
+        $trash->trash($dossier);
+
+        return redirect()->route('requests.index')
+            ->with('status', "Le dossier {$dossier->reference} a été placé dans la corbeille. Les destinataires le conservent.");
     }
 
     public function create(Request $request): View
@@ -112,6 +235,10 @@ class DossierController extends Controller
 
     public function store(StoreInternalRequest $request, InternalRequestService $service): RedirectResponse
     {
+        if (SubmissionGuard::alreadySubmitted($request)) {
+            return redirect()->route('requests.index')->with('warning', 'Cette demande a déjà été envoyée : le second envoi a été ignoré.');
+        }
+
         $dossier = $service->create($request->user(), $request->safe()->except('attachments'), $request->file('attachments', []));
 
         return redirect()->route('dossiers.show', $dossier)->with('status', "Le dossier {$dossier->reference} a été envoyé.");
@@ -156,7 +283,7 @@ class DossierController extends Controller
             'requestType', 'urgencyLevel', 'creator.department', 'originatingDepartment', 'externalRequester',
             'recipients' => fn ($recipients) => $recipients->with(['assignedUser', 'department'])->orderBy('id'),
             'validations' => fn ($validations) => $validations->with(['requester', 'validator'])->orderBy('id'),
-            'responses' => fn ($responses) => $responses->with(['author', 'recipient', 'documents' => fn ($documents) => $documents->active()])->orderBy('id'),
+            'responses' => fn ($responses) => $responses->with(['author.department', 'recipient', 'documents' => fn ($documents) => $documents->active()])->orderBy('id'),
             'documents' => fn ($documents) => $documents->with(['uploader', 'canceller'])->orderBy('id'),
         ]);
 
@@ -230,6 +357,7 @@ class DossierController extends Controller
             ->when($request->filled('search'), fn (Builder $search) => $search->where(fn (Builder $term) => $term
                 ->where('reference', 'like', $pattern)
                 ->orWhere('subject', 'like', $pattern)
+                ->orWhere('request_type_other', 'like', $pattern)
                 // Expéditeur : auteur interne (nom, prénom, « prénom nom » ou « nom prénom »)…
                 ->orWhereHas('creator', fn (Builder $creator) => $creator
                     ->where('name', 'like', $pattern)
@@ -250,8 +378,8 @@ class DossierController extends Controller
     private function suggestions(Builder $query): JsonResponse
     {
         return Search::suggestions($query, fn (Dossier $dossier) => [
-            'label' => $dossier->reference.' — '.$dossier->subject,
-            'detail' => collect([$dossier->requestType?->name, $dossier->isExternal() ? $dossier->externalRequester?->full_name : $dossier->creator?->name, $dossier->status->label()])->filter()->implode(' · '),
+            'label' => $dossier->reference.' — '.$dossier->shortSubject(),
+            'detail' => collect([$dossier->typeLabel(), $dossier->isExternal() ? $dossier->externalRequester?->full_name : $dossier->creator?->name, $dossier->status->label()])->filter()->implode(' · '),
             'url' => route('dossiers.show', $dossier),
         ]);
     }

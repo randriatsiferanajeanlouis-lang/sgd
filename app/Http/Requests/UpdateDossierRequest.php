@@ -2,12 +2,15 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\PrecisesOtherRequestType;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class UpdateDossierRequest extends FormRequest
 {
+    use PrecisesOtherRequestType;
+
     public function authorize(): bool
     {
         return $this->user()->can('update', $this->route('dossier'));
@@ -27,6 +30,15 @@ class UpdateDossierRequest extends FormRequest
             'urgency_level_id' => [$dossier->isExternal() ? 'required' : 'nullable', Rule::exists('urgency_levels', 'id')->where('is_active', true)],
             'due_at' => [$dossier->isExternal() ? 'prohibited' : 'required', 'date', 'after_or_equal:today'],
             'comment' => ['nullable', 'string', 'max:1000'],
+            ...$this->otherRequestTypeRules(),
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return $this->otherRequestTypeMessages();
     }
 }

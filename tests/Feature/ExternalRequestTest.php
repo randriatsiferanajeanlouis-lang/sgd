@@ -188,9 +188,15 @@ class ExternalRequestTest extends TestCase
     {
         $this->actingAs($this->hr)->get(route('external-requests.create'))
             ->assertOk()
-            ->assertSeeInOrder(['Demande et demandeur', 'Réception, transmission et description'])
+            ->assertSeeInOrder(['Demande et demandeur', 'Réception, transmission et description', 'Enregistrer et transmettre'])
             ->assertSee('data-step="1"', false)
-            ->assertSee('data-step="2"', false);
+            ->assertSee('data-step="2"', false)
+            ->assertSee('formColumns(', false)
+            ->assertSee('xl:grid-cols-2', false)
+            ->assertDontSee('id="modal-form"', false);
+
+        // Le bouton « Nouvelle demande externe » mène à cette page.
+        $this->get(route('external-requests.index'))->assertSee(route('external-requests.create'));
     }
 
     public function test_sponsoring_requires_every_field_including_the_organisation(): void
@@ -256,6 +262,21 @@ class ExternalRequestTest extends TestCase
      * @param  list<User>  $recipients
      * @return array<string, mixed>
      */
+    public function test_external_request_is_confirmed_and_never_registered_twice(): void
+    {
+        $this->actingAs($this->hr)->get(route('external-requests.create'))
+            ->assertSee('Êtes-vous sûr de vouloir transmettre cette demande externe à')
+            ->assertSee('name="_submission"', false);
+
+        $payload = [...$this->stagePayload([$this->rseManager]), '_submission' => (string) \Illuminate\Support\Str::uuid()];
+        $this->post(route('external-requests.store'), $payload)->assertSessionHasNoErrors();
+        $this->post(route('external-requests.store'), $payload)->assertRedirect(route('external-requests.index'))->assertSessionHas('warning');
+
+        $this->assertSame(1, Dossier::query()->count());
+        $this->post(route('external-requests.store'), [...$payload, 'recipients' => [], '_submission' => (string) \Illuminate\Support\Str::uuid()])
+            ->assertSessionHasErrors('recipients');
+    }
+
     private function stagePayload(array $recipients): array
     {
         return [

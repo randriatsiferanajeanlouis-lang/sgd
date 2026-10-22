@@ -1,5 +1,5 @@
 <x-layouts.app title="Modifier mon profil">
-    <x-form.modal title="Modifier mes coordonnées" :action="route('profile.update')" method="PUT" :cancel="route('profile.show')"
+    <x-form.card title="Modifier mes coordonnées" :action="route('profile.update')" method="PUT" :cancel="route('profile.show')"
                   enctype="multipart/form-data">
 
         <x-form.section title="Coordonnées" icon="mail" :fields="['phone', 'email']">
@@ -23,5 +23,5 @@
                 </div>
             </div>
         </x-form.section>
-    </x-form.modal>
+    </x-form.card>
 </x-layouts.app>

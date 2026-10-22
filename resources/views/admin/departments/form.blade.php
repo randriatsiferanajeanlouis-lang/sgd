@@ -1,7 +1,7 @@
 @php($editing = $department->exists)
 
 <x-layouts.app :title="$editing ? 'Modifier un département' : 'Créer un département'">
-    <x-form.modal :title="$editing ? 'Modifier le département '.$department->name : 'Créer un département'"
+    <x-form.card :title="$editing ? 'Modifier le département '.$department->name : 'Créer un département'"
                   :action="$editing ? route('admin.departments.update', $department) : route('admin.departments.store')"
                   :method="$editing ? 'PUT' : 'POST'" :cancel="route('admin.departments.index')">
 
@@ -23,5 +23,5 @@
         <x-form.section title="Description" icon="document" :open="filled($department->description)" :fields="['description']">
             <x-form.textarea name="description" label="Présentation du département" :value="$department->description" rows="3" />
         </x-form.section>
-    </x-form.modal>
+    </x-form.card>
 </x-layouts.app>

@@ -8,3 +8,9 @@ use Illuminate\Support\Facades\Schedule;
 | tâche planifiée Windows appelant `php artisan schedule:run` chaque minute).
 */
 Schedule::command('dossiers:check-deadlines')->hourly()->withoutOverlapping();
+
+/*
+| Sauvegarde de la base deux fois par jour (midi et fin de journée) ; les plus
+| anciennes sont supprimées (BACKUP_KEEP, défaut 14). Dossier : BACKUP_PATH.
+*/
+Schedule::command('db:backup')->twiceDaily(12, 17)->withoutOverlapping();

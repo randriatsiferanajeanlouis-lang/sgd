@@ -43,11 +43,6 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-            @if (Route::has('dossiers.department') && $viewer->hasPermission('view_department_dossiers'))
-                <a href="{{ route('dossiers.department') }}" class="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
-                    <x-icon name="inbox" class="size-4" /> Dossiers du département
-                </a>
-            @endif
             @if (Route::has('statistics.index') && ($viewer->hasPermission('view_department_statistics') || $viewer->hasPermission('view_global_statistics')))
                 <a href="{{ route('statistics.index') }}" class="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100">
                     <x-icon name="chart" class="size-4" /> Statistiques
@@ -186,9 +181,6 @@
                     @else
                         <h2 class="mt-3 font-semibold">Aucun retard dans l’équipe</h2>
                         <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Tous les traitements ouverts sont dans les délais.</p>
-                    @endif
-                    @if (Route::has('dossiers.department') && $viewer->hasPermission('view_department_dossiers'))
-                        <a href="{{ route('dossiers.department') }}" class="mt-4 inline-flex rounded-full bg-white px-4 py-1.5 text-sm font-medium text-slate-900 shadow-sm hover:bg-slate-100">Voir les dossiers</a>
                     @endif
                 </section>
 

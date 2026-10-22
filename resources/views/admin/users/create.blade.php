@@ -1,5 +1,5 @@
 <x-layouts.app title="Créer un utilisateur">
-    <x-form.modal title="Créer un utilisateur" subtitle="L’utilisateur devra changer ce mot de passe à sa première connexion."
+    <x-form.card title="Créer un utilisateur" subtitle="L’utilisateur devra changer ce mot de passe à sa première connexion."
                   :action="route('admin.users.store')" :cancel="route('admin.users.index')" submit="Créer le compte" submit-icon="plus"
                   enctype="multipart/form-data">
 
@@ -37,5 +37,5 @@
             </div>
             <x-form.field name="photo" label="Photo" type="file" accept="image/png,image/jpeg,image/webp" />
         </x-form.section>
-    </x-form.modal>
+    </x-form.card>
 </x-layouts.app>

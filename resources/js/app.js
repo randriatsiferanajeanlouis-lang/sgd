@@ -1,7 +1,49 @@
 import Alpine from 'alpinejs';
-import { BarController, BarElement, CategoryScale, Chart, Filler, LinearScale, LineController, LineElement, PointElement, Tooltip } from 'chart.js';
 
-Chart.register(LineController, LineElement, PointElement, BarController, BarElement, LinearScale, CategoryScale, Filler, Tooltip);
+/**
+ * Application installable (PWA). Le navigateur n'autorise l'installation et le service worker
+ * que sur une connexion sécurisée (HTTPS ou localhost).
+ */
+if ('serviceWorker' in navigator && window.isSecureContext) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}
+
+// L'évènement peut arriver avant le démarrage d'Alpine : on le garde de côté.
+window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    window.__pwaPrompt = event;
+    window.dispatchEvent(new CustomEvent('pwa-installable'));
+});
+
+Alpine.data('pwaInstall', () => ({
+    prompt: window.__pwaPrompt ?? null,
+    installed: window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true,
+    ios: /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1),
+    secure: window.isSecureContext,
+    help: false,
+
+    init() {
+        window.addEventListener('pwa-installable', () => { this.prompt = window.__pwaPrompt; });
+        window.addEventListener('appinstalled', () => { this.installed = true; this.prompt = null; });
+    },
+
+    async install() {
+        if (!this.prompt) {
+            this.help = true;
+
+            return;
+        }
+
+        this.prompt.prompt();
+        const { outcome } = await this.prompt.userChoice;
+        this.prompt = null;
+        window.__pwaPrompt = null;
+
+        if (outcome === 'accepted') {
+            this.installed = true;
+        }
+    },
+}));
 
 /**
  * Thème clair/sombre : appliqué immédiatement, mémorisé dans le navigateur
@@ -392,233 +434,222 @@ Alpine.data('liveSearch', (initial = '') => ({
 }));
 
 /**
- * Courbes du tableau de bord : une courbe par département, couleur fixe par
- * département (clair / sombre), période Semaine / Mois / Année.
- * L'instance Chart.js reste hors de l'état Alpine (les proxys la casseraient).
+ * Formulaire sur une page, en colonnes numérotées (x-form.page / x-form.panel) :
+ * toutes les étapes sont visibles à la fois. Chaque colonne indique si elle
+ * est complète ; pour un type « formulaire complet », l'envoi reste bloqué
+ * tant qu'un champ obligatoire manque.
  */
-Alpine.data('trendChart', (trends, initialPeriod = 'month') => {
-    let chart = null;
+/** « A », « A et B », « A, B et C ». */
+window.formatNames = (names) => new Intl.ListFormat('fr', { style: 'long', type: 'conjunction' }).format(names ?? []);
 
-    const isDark = () => document.documentElement.classList.contains('dark');
+/**
+ * Confirmation avant envoi (fenêtre <x-send-confirmation>), commune aux
+ * formulaires d'envoi. Le formulaire n'est soumis qu'après « Confirmer
+ * l'envoi » ; « Annuler » ferme la fenêtre sans rien perdre ; un seul envoi
+ * est possible (boutons bloqués pendant l'envoi).
+ */
+const sendConfirmation = () => ({
+    confirming: false,
+    confirmed: false,
+    submitting: false,
+    confirmNames: [],
+    confirmSubject: '',
+    recipientError: false,
 
-    const withAlpha = (hex, alpha) => {
-        const value = parseInt(hex.slice(1), 16);
+    /** À appeler sur l'évènement submit, une fois les champs valides. Renvoie true si l'envoi doit partir. */
+    guardSend(event) {
+        if (this.submitting) {
+            event.preventDefault();
 
-        return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}, ${alpha})`;
-    };
+            return false;
+        }
 
-    // Ligne verticale qui suit le survol (repère de lecture).
-    const crosshair = {
-        id: 'crosshair',
-        afterDatasetsDraw(instance) {
-            const active = instance.tooltip?.getActiveElements?.() ?? [];
+        if (this.confirmed) {
+            this.submitting = true;
 
-            if (!active.length) {
-                return;
-            }
+            return true;
+        }
 
-            const { ctx, chartArea } = instance;
-            const x = active[0].element.x;
+        event.preventDefault();
+        const names = this.recipientNames();
 
-            ctx.save();
-            ctx.strokeStyle = isDark() ? 'rgba(255,255,255,0.25)' : 'rgba(15,23,42,0.2)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(x, chartArea.top);
-            ctx.lineTo(x, chartArea.bottom);
-            ctx.stroke();
-            ctx.restore();
-        },
-    };
+        if (names.length === 0) {
+            this.recipientError = true;
 
-    return {
-        trends,
-        period: initialPeriod,
-        dark: isDark(),
+            return false;
+        }
 
-        get current() {
-            return this.trends.periods[this.period];
-        },
+        this.recipientError = false;
+        this.confirmNames = names;
+        this.confirmSubject = this.$root.querySelector('[name="subject"]')?.value?.trim() ?? '';
+        this.confirming = true;
+        this.$nextTick(() => this.$root.querySelector('[data-confirm-button]')?.focus());
 
-        colorOf(serie) {
-            return this.dark ? serie.color.dark : serie.color.light;
-        },
+        return false;
+    },
 
-        init() {
-            this.render();
-            this.$watch('period', () => this.render());
+    confirmSend() {
+        // Nouvelle vérification : le destinataire a pu être retiré entre-temps.
+        if (this.recipientNames().length === 0) {
+            this.confirming = false;
+            this.recipientError = true;
 
-            // Changement de thème : légende et courbes reprennent les teintes du mode choisi.
-            new MutationObserver(() => {
-                if (this.dark !== isDark()) {
-                    this.dark = isDark();
-                    this.render();
-                }
-            }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-        },
+            return;
+        }
 
-        render() {
-            const dark = isDark();
-            const period = this.current;
-            const single = period.series.length === 1;
-            const surface = dark ? '#121238' : '#ffffff';
-            const ink = dark ? '#c9c9ea' : '#555968';
-            // Quadrillage (carreaux) : lignes verticales et horizontales visibles mais discrètes.
-            const grid = dark ? 'rgba(255,255,255,0.12)' : 'rgba(26,26,140,0.10)';
+        this.confirmed = true;
+        this.confirming = false;
+        this.formElement().requestSubmit();
+    },
 
-            const datasets = period.series.map((serie) => {
-                const color = dark ? serie.color.dark : serie.color.light;
+    cancelSend() {
+        if (!this.submitting) {
+            this.confirming = false;
+        }
+    },
 
-                return {
-                    label: serie.name,
-                    data: serie.data,
-                    borderColor: color,
-                    borderWidth: 2,
-                    tension: 0.4,
-                    pointRadius: 0,
-                    pointHoverRadius: 5,
-                    pointHitRadius: 12,
-                    pointHoverBackgroundColor: color,
-                    pointHoverBorderColor: surface,
-                    pointHoverBorderWidth: 2,
-                    fill: 'origin',
-                    backgroundColor: (context) => {
-                        const area = context.chart.chartArea;
-
-                        if (!area) {
-                            return 'transparent';
-                        }
-
-                        const gradient = context.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
-                        gradient.addColorStop(0, withAlpha(color, single ? 0.35 : 0.12));
-                        gradient.addColorStop(1, withAlpha(color, 0));
-
-                        return gradient;
-                    },
-                };
-            });
-
-            if (chart) {
-                chart.destroy();
-            }
-
-            chart = new Chart(this.$refs.canvas, {
-                type: 'line',
-                data: { labels: period.labels, datasets },
-                plugins: [crosshair],
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: { duration: 300 },
-                    interaction: { mode: 'index', intersect: false },
-                    scales: {
-                        x: {
-                            grid: { color: grid, lineWidth: 1, drawTicks: false },
-                            border: { display: true, color: grid },
-                            ticks: { color: ink, maxRotation: 0, autoSkip: true, maxTicksLimit: 8, padding: 6, font: { size: 11 } },
-                        },
-                        y: {
-                            beginAtZero: true,
-                            grid: { color: grid, lineWidth: 1, drawTicks: false },
-                            border: { display: true, color: grid },
-                            ticks: { color: ink, precision: 0, maxTicksLimit: 7, padding: 6, font: { size: 11 } },
-                        },
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: dark ? '#1c1c4a' : '#ffffff',
-                            titleColor: dark ? '#ffffff' : '#202334',
-                            bodyColor: dark ? '#c9c9ea' : '#555968',
-                            borderColor: dark ? '#2c2c5e' : '#dde0ee',
-                            borderWidth: 1,
-                            padding: 10,
-                            boxPadding: 4,
-                            usePointStyle: true,
-                            callbacks: {
-                                label: (item) => ` ${item.dataset.label} : ${item.formattedValue} dossier(s)`,
-                                labelPointStyle: () => ({ pointStyle: 'circle', rotation: 0 }),
-                            },
-                        },
-                    },
-                },
-            });
-        },
-    };
+    formElement() {
+        return this.$root.tagName === 'FORM' ? this.$root : this.$root.querySelector('form');
+    },
 });
 
 /**
- * Graphique à barres (statistiques) : une mesure par graphique, une barre par catégorie.
- * config = { labels, values, colors?: [{light, dark}] (une par barre, sinon bleu unique),
- *            horizontal?: bool, unit?: 'dossier(s)' }.
+ * Formulaire simple d'envoi (transmission d'un dossier) : le destinataire
+ * vient d'une liste (select) ou est fixé (responsable hiérarchique).
  */
-Alpine.data('barChart', (config) => {
-    let chart = null;
+Alpine.data('confirmSend', ({ select = null, fixed = null } = {}) => ({
+    ...sendConfirmation(),
 
-    const isDark = () => document.documentElement.classList.contains('dark');
-    const single = { light: '#1a1a8c', dark: '#a5a5f5' };
+    recipientNames() {
+        if (fixed) {
+            return [fixed];
+        }
 
-    return {
-        init() {
-            this.render();
+        const field = this.$root.querySelector(select);
 
-            new MutationObserver(() => this.render()).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-        },
+        return field && field.value ? [field.selectedOptions[0].text.trim()] : [];
+    },
 
-        render() {
-            const dark = isDark();
-            const ink = dark ? '#c9c9ea' : '#555968';
-            const grid = dark ? 'rgba(255,255,255,0.12)' : 'rgba(26,26,140,0.10)';
-            const colors = config.values.map((_, index) => {
-                const color = config.colors?.[index] ?? single;
+    validate(event) {
+        this.guardSend(event);
+    },
+}));
 
-                return dark ? color.dark : color.light;
-            });
-            const valueAxis = { beginAtZero: true, grid: { color: grid, drawTicks: false }, border: { display: true, color: grid }, ticks: { color: ink, precision: 0, padding: 6, font: { size: 11 } } };
-            const categoryAxis = { grid: { display: false }, border: { display: true, color: grid }, ticks: { color: ink, padding: 6, font: { size: 11 }, autoSkip: false } };
+Alpine.data('formColumns', (count, completeTypes = [], type = '', confirm = false) => ({
+    ...sendConfirmation(),
+    count,
+    confirm,
+    completeTypes: completeTypes.map(String),
+    type: String(type ?? ''),
+    done: Array(count + 1).fill(false),
 
-            if (chart) {
-                chart.destroy();
+    recipientNames() {
+        return [...this.$root.querySelectorAll('input[name="recipients[]"]')].map((input) => input.dataset.name || input.value);
+    },
+
+    get complete() {
+        return this.completeTypes.includes(String(this.type));
+    },
+
+    get filled() {
+        return this.done.filter(Boolean).length;
+    },
+
+    get blocked() {
+        return this.complete && this.filled < this.count;
+    },
+
+    init() {
+        const refresh = () => this.$nextTick(() => this.refresh());
+
+        ['input', 'change', 'click'].forEach((name) => this.$root.addEventListener(name, refresh, true));
+        this.$watch('type', refresh);
+        refresh();
+    },
+
+    refresh() {
+        for (let n = 1; n <= this.count; n++) {
+            this.done[n] = this.fieldsOf(n).every((field) => field.checkValidity());
+        }
+
+        if (this.recipientError && this.recipientNames().length > 0) {
+            this.recipientError = false;
+        }
+    },
+
+    fieldsOf(number) {
+        const panel = this.$root.querySelector(`[data-step="${number}"]`);
+
+        return panel ? [...panel.querySelectorAll('input, select, textarea')].filter((field) => !field.disabled) : [];
+    },
+
+    /** Amène l'utilisateur au premier champ manquant (colonne de gauche d'abord). */
+    focusFirstInvalid() {
+        for (let n = 1; n <= this.count; n++) {
+            const invalid = this.fieldsOf(n).find((field) => !field.checkValidity());
+
+            if (invalid) {
+                invalid.closest('[data-step]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                this.$nextTick(() => invalid.reportValidity());
+
+                return true;
             }
+        }
 
-            chart = new Chart(this.$refs.canvas, {
-                type: 'bar',
-                data: {
-                    labels: config.labels,
-                    datasets: [{
-                        data: config.values,
-                        backgroundColor: colors,
-                        hoverBackgroundColor: colors,
-                        borderRadius: 4,
-                        borderSkipped: 'start',
-                        maxBarThickness: 32,
-                        categoryPercentage: 0.7,
-                    }],
-                },
-                options: {
-                    indexAxis: config.horizontal ? 'y' : 'x',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: { duration: 300 },
-                    scales: config.horizontal ? { x: valueAxis, y: categoryAxis } : { x: categoryAxis, y: valueAxis },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: dark ? '#1c1c4a' : '#ffffff',
-                            titleColor: dark ? '#ffffff' : '#202334',
-                            bodyColor: dark ? '#c9c9ea' : '#555968',
-                            borderColor: dark ? '#2c2c5e' : '#dde0ee',
-                            borderWidth: 1,
-                            padding: 10,
-                            displayColors: false,
-                            callbacks: { label: (item) => `${item.formattedValue} ${config.unit ?? ''}`.trim() },
-                        },
-                    },
-                },
-            });
-        },
-    };
-});
+        return false;
+    },
+
+    validateAll(event) {
+        if (this.submitting) {
+            event.preventDefault();
+
+            return;
+        }
+
+        this.refresh();
+
+        // Aucun destinataire : message explicite, en plus du champ signalé.
+        if (this.confirm && this.$root.querySelector('[data-recipient-picker]') && this.recipientNames().length === 0) {
+            this.recipientError = true;
+        }
+
+        if (this.blocked || this.focusFirstInvalid()) {
+            event.preventDefault();
+
+            return;
+        }
+
+        if (this.confirm) {
+            this.guardSend(event);
+        } else {
+            this.submitting = true;
+        }
+    },
+}));
+
+/**
+ * Section repliable du menu latéral : l'état ouvert / fermé est mémorisé
+ * dans le navigateur (si le stockage local est disponible).
+ */
+Alpine.data('navSection', (key) => ({
+    open: true,
+
+    init() {
+        try {
+            this.open = localStorage.getItem(key) !== 'closed';
+        } catch {
+            this.open = true;
+        }
+
+        this.$watch('open', (value) => {
+            try {
+                localStorage.setItem(key, value ? 'open' : 'closed');
+            } catch {
+                // Stockage indisponible (navigation privée) : l'état n'est simplement pas mémorisé.
+            }
+        });
+    },
+}));
 
 window.Alpine = Alpine;
 Alpine.start();

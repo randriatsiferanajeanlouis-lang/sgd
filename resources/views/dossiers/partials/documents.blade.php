@@ -1,6 +1,6 @@
 <section class="card" aria-labelledby="documents-title">
     <div class="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="documents-title" class="text-lg font-semibold">Pièces du dossier</h2>
+        <x-section-title id="documents-title" icon="paperclip" :count="$documentGroups->count()">Pièces du dossier</x-section-title>
         @can('downloadAll', $dossier)
             @if ($documentGroups->contains(fn ($versions) => $versions->first()->isActive()))
                 <a href="{{ route('documents.zip', $dossier) }}" class="btn-secondary px-3 py-1.5"><x-icon name="download" class="size-4" /> Télécharger toutes les pièces</a>
@@ -8,14 +8,23 @@
         @endcan
     </div>
 
-    <ul class="mt-4 space-y-4 text-sm">
+    <ul class="mt-5 space-y-3 text-sm">
         @forelse ($documentGroups as $versions)
             @php($latest = $versions->first())
-            <li class="rounded-xl border border-slate-200 p-3 dark:border-slate-800" x-data="{ versions: false, replace: false, cancel: false }">
-                <div class="flex items-start justify-between gap-2">
-                    <div class="min-w-0">
-                        @include('dossiers.partials.document-link', ['document' => $latest])
+            <li class="rounded-lg border border-univ-line p-3 transition hover:border-brand-300 dark:border-slate-800 dark:hover:border-slate-600" x-data="{ versions: false, replace: false, cancel: false }">
+                @php($extension = Str::upper(pathinfo($latest->original_name, PATHINFO_EXTENSION)))
+                @php($tone = match (true) {
+                    $extension === 'PDF' => 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300',
+                    in_array($extension, ['DOC', 'DOCX'], true) => 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
+                    in_array($extension, ['XLS', 'XLSX'], true) => 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300',
+                    default => 'bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300',
+                })
+                <div class="flex items-start gap-3">
+                    <span class="flex size-10 shrink-0 items-center justify-center rounded-md text-[10px] font-extrabold {{ $tone }}" aria-hidden="true">{{ Str::limit($extension ?: 'FIC', 4, '') }}</span>
+                    <div class="min-w-0 flex-1 break-words">
+                        @include('dossiers.partials.document-link', ['document' => $latest, 'withIcon' => false])
                         <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            @if ($latest->size) {{ $latest->size >= 1048576 ? number_format($latest->size / 1048576, 1, ',', ' ').' Mo' : max(1, round($latest->size / 1024)).' Ko' }} · @endif
                             {{ $latest->uploader->name }} · {{ $latest->created_at->format('d/m/Y H:i') }}
                             @if ($latest->response) · réponse de {{ $latest->response->author->name }} @endif
                         </div>

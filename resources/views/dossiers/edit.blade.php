@@ -1,14 +1,16 @@
 <x-layouts.app :title="'Modifier '.$dossier->reference">
-    <x-form.modal :title="'Modifier le dossier '.$dossier->reference" subtitle="Chaque modification est conservée dans l’historique (ancienne et nouvelle valeur) et les destinataires sont prévenus."
-                  :action="route('dossiers.update', $dossier)" method="PUT" :cancel="route('dossiers.show', $dossier)" submit="Enregistrer">
+    <x-form.card :title="'Modifier le dossier '.$dossier->reference" subtitle="Chaque modification est conservée dans l’historique (ancienne et nouvelle valeur) et les destinataires sont prévenus."
+                  :type="$dossier->request_type_id" :action="route('dossiers.update', $dossier)" method="PUT" :cancel="route('dossiers.show', $dossier)" submit="Enregistrer">
 
         <x-form.field name="subject" label="Objet" :value="$dossier->subject" required maxlength="255" />
 
         <div class="grid gap-5 sm:grid-cols-2">
-            <x-form.select name="request_type_id" label="Type" :options="$requestTypes" :value="$dossier->request_type_id" required />
+            <x-form.select name="request_type_id" label="Type" :options="$requestTypes" :value="$dossier->request_type_id" required x-model="type" />
             <x-form.select name="urgency_level_id" label="Urgence" :options="$urgencyLevels" :value="$dossier->urgency_level_id"
                            :placeholder="$dossier->isExternal() ? null : 'Non précisée'" />
         </div>
+
+        <x-form.other-request-type :value="$dossier->request_type_other" />
 
         <x-form.section title="Échéance" icon="clock" :fields="['due_at']">
             <div class="sm:max-w-xs">
@@ -28,5 +30,5 @@
         <x-form.section title="Autres informations" icon="info" :open="false" :fields="['comment']">
             <x-form.field name="comment" label="Motif de la modification (facultatif)" />
         </x-form.section>
-    </x-form.modal>
+    </x-form.card>
 </x-layouts.app>

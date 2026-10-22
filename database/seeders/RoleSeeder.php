@@ -23,8 +23,8 @@ class RoleSeeder extends Seeder
 
         $newPermissionNames = [];
 
-        foreach ($this->permissions() as $name => [$group, $label]) {
-            $permission = Permission::query()->updateOrCreate(['name' => $name], ['group' => $group, 'label' => $label]);
+        foreach ($this->permissions() as $name => [$group, $label, $description]) {
+            $permission = Permission::query()->updateOrCreate(['name' => $name], ['group' => $group, 'label' => $label, 'description' => $description]);
 
             if ($permission->wasRecentlyCreated) {
                 $newPermissionNames[] = $name;
@@ -48,37 +48,82 @@ class RoleSeeder extends Seeder
     }
 
     /**
-     * @return array<string, array{0: string, 1: string}>
+     * Réparation : rattache à chaque rôle ses permissions par défaut (par exemple
+     * après la perte de la table role_permissions). N'en retire jamais aucune.
+     *
+     * @return array<string, int> nombre de permissions par défaut par rôle
+     */
+    public function restoreDefaults(): array
+    {
+        $this->run();
+
+        $counts = [];
+
+        foreach ($this->roles() as $name => $definition) {
+            $role = Role::query()->where('name', $name)->firstOrFail();
+            $ids = Permission::query()->whereIn('name', $definition['permissions'])->pluck('id');
+
+            $role->permissions()->syncWithoutDetaching($ids);
+            $counts[$name] = $role->permissions()->count();
+        }
+
+        return $counts;
+    }
+
+    /**
+     * Groupes, dans l'ordre d'affichage de l'écran « Rôles et permissions ».
+     */
+    public const GROUPS = [
+        'Demandes',
+        'Consultation des dossiers',
+        'Traitement des dossiers',
+        'Historique et supervision',
+        'Utilisateurs',
+        'Organisation',
+        'Paramétrage',
+        'Statistiques',
+    ];
+
+    /**
+     * @return array<string, array{0: string, 1: string, 2: string}> nom => [groupe, libellé, description]
      */
     private function permissions(): array
     {
         return [
-            'create_internal_request' => ['Dossiers', 'Créer une demande interne'],
-            'create_external_request' => ['Dossiers', 'Enregistrer une demande externe'],
-            'manage_external_requests' => ['Dossiers', 'Suivre les demandes externes et enregistrer la réponse officielle'],
-            'view_own_dossiers' => ['Dossiers', 'Voir ses dossiers'],
-            'view_department_dossiers' => ['Dossiers', 'Voir les dossiers de son département'],
-            'view_all_dossiers' => ['Dossiers', 'Voir tous les dossiers'],
-            'respond_dossier' => ['Dossiers', 'Répondre à un dossier'],
-            'transmit_dossier' => ['Dossiers', 'Transmettre un dossier'],
-            'validate_dossier' => ['Dossiers', 'Valider ou refuser une demande de validation'],
-            'reopen_dossier' => ['Dossiers', 'Réouvrir un traitement archivé'],
-            'archive_dossier' => ['Dossiers', 'Archiver un traitement'],
-            'send_reminder' => ['Dossiers', 'Relancer un destinataire'],
-            'view_own_history' => ['Historique', 'Voir l’historique de ses dossiers'],
-            'view_department_history' => ['Historique', 'Voir l’historique des dossiers du département'],
-            'view_all_history' => ['Historique', 'Voir l’historique de tous les dossiers'],
-            'download_document' => ['Documents', 'Télécharger les documents autorisés'],
-            'manage_users' => ['Utilisateurs', 'Gérer les utilisateurs'],
-            'deactivate_department_user' => ['Utilisateurs', 'Désactiver un employé de son département'],
-            'view_departments' => ['Administration', 'Consulter la liste des départements (lecture seule)'],
-            'manage_departments' => ['Administration', 'Gérer les départements'],
-            'manage_request_types' => ['Administration', 'Gérer les types de demandes'],
-            'manage_urgencies' => ['Administration', 'Gérer les niveaux d’urgence'],
-            'manage_permissions' => ['Administration', 'Gérer les rôles et permissions'],
-            'manage_settings' => ['Administration', 'Gérer les paramètres'],
-            'view_department_statistics' => ['Statistiques', 'Voir les statistiques du département'],
-            'view_global_statistics' => ['Statistiques', 'Voir les statistiques générales'],
+            'create_internal_request' => ['Demandes', 'Créer une demande interne', 'Envoyer une demande à des collègues d’autres départements.'],
+            'create_external_request' => ['Demandes', 'Enregistrer une demande externe', 'Saisir une demande reçue d’une personne ou d’un organisme extérieur.'],
+            'manage_external_requests' => ['Demandes', 'Suivre les demandes externes', 'Suivre les décisions des responsables et enregistrer la réponse officielle au demandeur.'],
+
+            'view_own_dossiers' => ['Consultation des dossiers', 'Voir ses dossiers', 'Dossiers envoyés ou reçus personnellement.'],
+            'view_department_dossiers' => ['Consultation des dossiers', 'Voir les dossiers du département', 'Tous les dossiers émis ou reçus par son département.'],
+            'view_all_dossiers' => ['Consultation des dossiers', 'Voir tous les dossiers', 'Accès en lecture à l’ensemble des dossiers de l’entreprise.'],
+
+            'respond_dossier' => ['Traitement des dossiers', 'Répondre à un dossier', 'Rédiger la réponse d’un dossier reçu.'],
+            'transmit_dossier' => ['Traitement des dossiers', 'Transmettre un dossier', 'Faire suivre un dossier reçu à un autre utilisateur.'],
+            'validate_dossier' => ['Traitement des dossiers', 'Valider ou refuser', 'Décider des demandes de validation transmises par les employés.'],
+            'reopen_dossier' => ['Traitement des dossiers', 'Réouvrir un traitement', 'Rouvrir un traitement répondu ou archivé, avec un motif.'],
+            'archive_dossier' => ['Traitement des dossiers', 'Archiver un traitement', 'Classer un traitement terminé.'],
+            'send_reminder' => ['Traitement des dossiers', 'Relancer un destinataire', 'Envoyer une relance à un destinataire en attente.'],
+            'download_document' => ['Traitement des dossiers', 'Télécharger les pièces', 'Télécharger les pièces jointes des dossiers accessibles.'],
+
+            'view_own_history' => ['Historique et supervision', 'Historique de ses dossiers', 'Historique détaillé des dossiers auxquels on participe.'],
+            'view_department_history' => ['Historique et supervision', 'Historique du département', 'Historique détaillé des dossiers du département.'],
+            'view_all_history' => ['Historique et supervision', 'Historique de tous les dossiers', 'Historique détaillé de l’ensemble des dossiers.'],
+            'view_activity_log' => ['Historique et supervision', 'Journal d’activité', 'Connexions et actions d’administration : comptes, départements, rôles, paramètres, sauvegardes.'],
+
+            'manage_users' => ['Utilisateurs', 'Gérer les utilisateurs', 'Créer, modifier, désactiver les comptes et réinitialiser les mots de passe.'],
+            'deactivate_department_user' => ['Utilisateurs', 'Désactiver un employé du département', 'Le responsable désactive un compte de son département ; les administrateurs sont prévenus.'],
+
+            'view_departments' => ['Organisation', 'Consulter les départements', 'Liste des départements en lecture seule.'],
+            'manage_departments' => ['Organisation', 'Gérer les départements', 'Créer, modifier, activer ou désactiver un département et nommer son responsable.'],
+
+            'manage_request_types' => ['Paramétrage', 'Gérer les types de demandes', 'Ajouter ou modifier les types proposés à la création d’une demande.'],
+            'manage_urgencies' => ['Paramétrage', 'Gérer les niveaux d’urgence', 'Délais de réponse et couleurs des niveaux d’urgence.'],
+            'manage_permissions' => ['Paramétrage', 'Gérer les rôles et permissions', 'Attribuer ou retirer des permissions à chaque rôle.'],
+            'manage_settings' => ['Paramétrage', 'Gérer les paramètres', 'Réglages généraux de l’application.'],
+
+            'view_department_statistics' => ['Statistiques', 'Statistiques du département', 'Indicateurs et graphiques de son département.'],
+            'view_global_statistics' => ['Statistiques', 'Statistiques générales', 'Indicateurs et graphiques de tous les départements.'],
         ];
     }
 
@@ -149,6 +194,7 @@ class RoleSeeder extends Seeder
                     'manage_permissions',
                     'manage_settings',
                     'view_global_statistics',
+                    'view_activity_log',
                 ],
             ],
         ];

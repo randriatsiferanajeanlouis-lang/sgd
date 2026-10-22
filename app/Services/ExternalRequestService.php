@@ -73,6 +73,7 @@ class ExternalRequestService
                 'subject' => $data['subject'],
                 'description' => $data['description'] ?? null,
                 'request_type_id' => $data['request_type_id'],
+                'request_type_other' => $data['request_type_other'] ?? null,
                 'urgency_level_id' => $urgency->id,
                 'external_requester_id' => $requester->id,
                 'created_by' => $hr->id,

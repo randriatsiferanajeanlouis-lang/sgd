@@ -17,24 +17,25 @@
     <div class="card overflow-x-auto p-0">
         <table class="data-table">
             <thead>
-                <tr><th>Date</th><th>Heure</th><th>Dossier</th><th>Utilisateur</th><th>Action</th><th>Ancienne → nouvelle valeur</th><th>Commentaire</th></tr>
+                <tr><th>Date</th><th>Heure</th><th>Dossier</th><th>Utilisateur</th><th>Action</th><th>Ancienne → nouvelle valeur</th><th>Commentaire</th><th class="text-right">Actions</th></tr>
             </thead>
             <tbody>
                 @forelse ($rows as $row)
                     <tr>
                         <td data-label="Date" class="whitespace-nowrap">{{ $row['date'] }}</td>
                         <td data-label="Heure">{{ $row['time'] }}</td>
-                        <td data-label="Dossier">
-                            <a href="{{ route('dossiers.show', $row['dossier']) }}#historique" class="font-bold text-brand-500 hover:underline dark:text-brand-300" title="{{ $row['dossier']->subject }}">{{ $row['dossier']->reference }}</a>
-                            <span class="block max-w-56 truncate text-xs text-univ-muted dark:text-slate-400">{{ $row['dossier']->subject }}</span>
+                        <td data-label="Dossier" class="min-w-[15rem]">
+                            <a href="{{ route('dossiers.show', $row['dossier']) }}#historique" class="font-mono font-bold whitespace-nowrap text-brand-500 hover:underline dark:text-brand-300" title="{{ $row['dossier']->subject }}">{{ $row['dossier']->reference }}</a>
+                            <span class="block text-xs whitespace-nowrap text-univ-muted dark:text-slate-400" title="{{ $row['dossier']->subject }}">{{ $row['dossier']->shortSubject() }}</span>
                         </td>
                         <td data-label="Utilisateur" class="whitespace-nowrap">{{ $row['user'] }}</td>
                         <td data-label="Action" class="font-medium">{{ $row['action'] }}</td>
                         <td data-label="Ancienne → nouvelle" class="text-xs text-slate-600 dark:text-slate-400">{{ $row['details'] }}</td>
                         <td data-label="Commentaire" class="text-xs">{{ $row['comment'] }}</td>
+                        <td class="text-right whitespace-nowrap"><x-view-button :href="route('dossiers.show', $row['dossier']).'#historique'" :reference="$row['dossier']->reference" /></td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="py-10 text-center text-slate-500">Aucune action enregistrée.</td></tr>
+                    <tr><td colspan="8" class="py-10 text-center text-slate-500">Aucune action enregistrée.</td></tr>
                 @endforelse
             </tbody>
         </table>

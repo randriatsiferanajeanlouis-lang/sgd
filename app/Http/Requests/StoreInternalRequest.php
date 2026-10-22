@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\RequestScope;
+use App\Http\Requests\Concerns\PrecisesOtherRequestType;
 use App\Models\Dossier;
 use App\Models\RequestType;
 use App\Services\DocumentStorage;
@@ -12,6 +13,8 @@ use Illuminate\Validation\Rule;
 
 class StoreInternalRequest extends FormRequest
 {
+    use PrecisesOtherRequestType;
+
     public function authorize(): bool
     {
         return $this->user()->can('createInternal', Dossier::class);
@@ -45,6 +48,7 @@ class StoreInternalRequest extends FormRequest
             ],
             'attachments' => ['nullable', 'array', 'max:10'],
             'attachments.*' => DocumentStorage::uploadRules(),
+            ...$this->otherRequestTypeRules(),
         ];
     }
 
@@ -59,6 +63,7 @@ class StoreInternalRequest extends FormRequest
             'due_at.after_or_equal' => 'La date d’échéance ne peut pas être passée.',
             'urgency_level_id.required' => 'L’urgence est obligatoire pour ce type de demande.',
             'description.required' => 'La description est obligatoire pour ce type de demande.',
+            ...$this->otherRequestTypeMessages(),
         ];
     }
 }

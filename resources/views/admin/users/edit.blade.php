@@ -1,5 +1,5 @@
 <x-layouts.app title="Modifier un utilisateur">
-    <x-form.modal :title="$user->name" :subtitle="$user->username.' · '.$user->department?->name"
+    <x-form.card :title="$user->name" :subtitle="$user->username.' · '.$user->department?->name"
                   :action="route('admin.users.update', $user)" method="PUT" :cancel="route('admin.users.index')">
 
         <div class="flex flex-wrap items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
@@ -82,5 +82,5 @@
                 </ul>
             </x-form.section>
         </x-slot:after>
-    </x-form.modal>
+    </x-form.card>
 </x-layouts.app>

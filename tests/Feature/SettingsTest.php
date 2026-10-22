@@ -43,7 +43,7 @@ class SettingsTest extends TestCase
         $this->actingAs($hr)->post(route('external-requests.store'), [
             'requester_name' => 'Test', 'subject' => 'Délai',
             'requester_organization' => 'Org', 'requester_phone' => '034 00 000 00', 'requester_email' => 'test@example.com', 'description' => 'Test',
-            'request_type_id' => RequestType::query()->where('code', 'AUTRE')->value('id'),
+            'request_type_id' => RequestType::query()->where('code', 'AUTRE')->value('id'), 'request_type_other' => 'Demande de délai',
             'received_at' => now()->toDateString(), 'reception_channel' => 'email',
             'urgency_level_id' => $urgent->id,
             'recipients' => [$this->makeUser(Role::DEPARTMENT_HEAD, 'RSE')->id],

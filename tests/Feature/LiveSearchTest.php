@@ -40,7 +40,7 @@ class LiveSearchTest extends TestCase
         $this->getJson(route('dossiers.index', ['box' => 'sent', 'search' => 'b', 'suggest' => 1]))
             ->assertOk()
             ->assertJsonCount(1, 'results')
-            ->assertJsonPath('results.0.label', $voucher->reference.' — Bon de commande carburant');
+            ->assertJsonPath('results.0.label', $voucher->reference.' — Bon de commande ...');
     }
 
     public function test_dossiers_can_be_searched_by_the_sender_name(): void

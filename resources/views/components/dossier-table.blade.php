@@ -1,4 +1,5 @@
-@props(['dossiers'])
+{{-- actions : colonne « Voir » (et crayon « Modifier » si autorisé) sur chaque dossier, affichée par défaut. --}}
+@props(['dossiers', 'actions' => true])
 
 @php($viewer = auth()->user())
 
@@ -12,6 +13,9 @@
                 <th>Destinataires</th>
                 <th>Statut</th>
                 <th>Échéance</th>
+                @if ($actions)
+                    <th class="text-right">Actions</th>
+                @endif
             </tr>
         </thead>
         <tbody>
@@ -25,8 +29,8 @@
                         @endif
                     </td>
                     <td data-label="Objet">
-                        <a href="{{ route('dossiers.show', $dossier) }}" class="font-medium hover:underline">{{ $dossier->subject }}</a>
-                        <div class="text-xs text-slate-500 dark:text-slate-400">{{ $dossier->requestType->name }}</div>
+                        <a href="{{ route('dossiers.show', $dossier) }}" class="font-medium whitespace-nowrap hover:underline" title="{{ $dossier->subject }}">{{ $dossier->shortSubject() }}</a>
+                        <div class="text-xs text-slate-500 dark:text-slate-400">{{ $dossier->typeLabel() }}</div>
                     </td>
                     <td data-label="Expéditeur" class="whitespace-nowrap">{{ $dossier->isExternal() ? ($dossier->externalRequester?->full_name ?? '—') : $dossier->creator->name }}</td>
                     <td data-label="Destinataires">
@@ -47,9 +51,19 @@
                     <td data-label="Échéance" class="whitespace-nowrap">
                         <x-deadline :due-at="$mine?->due_at ?? $dossier->due_at" :closed="$mine ? ! $mine->status->isOpen() : in_array($dossier->status, [\App\Enums\DossierStatus::Answered, \App\Enums\DossierStatus::Archived], true)" />
                     </td>
+                    @if ($actions)
+                        <td class="text-right whitespace-nowrap">
+                            <div class="inline-flex justify-end gap-2">
+                                <x-view-button :href="route('dossiers.show', $dossier)" :reference="$dossier->reference" />
+                                @can('update', $dossier)
+                                    <a href="{{ route('dossiers.edit', $dossier) }}" class="btn-secondary min-h-8 px-2.5 py-1.5" title="Modifier" aria-label="Modifier {{ $dossier->reference }}"><x-icon name="pencil" class="size-4" /></a>
+                                @endcan
+                            </div>
+                        </td>
+                    @endif
                 </tr>
             @empty
-                <tr><td colspan="6" class="py-10 text-center text-slate-500">Aucun dossier.</td></tr>
+                <tr><td colspan="{{ $actions ? 7 : 6 }}" class="py-10 text-center text-slate-500">Aucun dossier.</td></tr>
             @endforelse
         </tbody>
     </table>

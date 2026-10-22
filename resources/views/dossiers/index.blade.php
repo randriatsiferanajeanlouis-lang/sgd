@@ -1,11 +1,5 @@
 <x-layouts.app title="Mes dossiers">
-    <x-page-header title="Mes dossiers">
-        <x-slot:actions>
-            @can('createInternal', App\Models\Dossier::class)
-                <a href="{{ route('dossiers.create') }}" class="btn-primary"><x-icon name="plus" /> Nouvelle demande</a>
-            @endcan
-        </x-slot:actions>
-    </x-page-header>
+    <x-page-header title="Mes dossiers" subtitle="Les dossiers que vous avez reçus ou envoyés, selon vos droits d’accès." />
 
     {{-- Synthèse : total général et total par département (un clic filtre la liste) --}}
     <section class="mb-6" aria-label="Totaux des dossiers">

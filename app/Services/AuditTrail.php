@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AuditLog;
 use App\Models\Department;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -25,11 +26,12 @@ class AuditTrail
         ?array $newValues = null,
         ?string $comment = null,
         ?Department $department = null,
+        ?User $actor = null,
     ): AuditLog {
         $request = request();
 
         return AuditLog::query()->create([
-            'actor_id' => Auth::id(),
+            'actor_id' => $actor?->id ?? Auth::id(),
             'action' => $action,
             'target_type' => $target?->getMorphClass(),
             'target_id' => $target?->getKey(),

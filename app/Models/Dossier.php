@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Str;
 
 #[Fillable([
     'reference',
@@ -21,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'subject',
     'description',
     'request_type_id',
+    'request_type_other',
     'urgency_level_id',
     'external_requester_id',
     'originating_department_id',
@@ -60,6 +63,14 @@ class Dossier extends Model
     /**
      * @return array<string, string>
      */
+    /**
+     * Type affiché : le texte saisi quand l'expéditeur a choisi « Autre », sinon le nom du type.
+     */
+    public function typeLabel(): string
+    {
+        return filled($this->request_type_other) ? $this->request_type_other : (string) $this->requestType?->name;
+    }
+
     protected function casts(): array
     {
         return [
@@ -69,7 +80,46 @@ class Dossier extends Model
             'received_at' => 'datetime',
             'due_at' => 'datetime',
             'archived_at' => 'datetime',
+            'trashed_by_sender_at' => 'datetime',
+            'purged_by_sender_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Mis à la corbeille par son expéditeur (restaurable tant qu'il n'est pas supprimé définitivement).
+     */
+    public function isTrashedBySender(): bool
+    {
+        return $this->trashed_by_sender_at !== null;
+    }
+
+    /** Nombre maximal de caractères de l'objet affichés dans les listes. */
+    public const SUBJECT_LIST_CHARS = 15;
+
+    /**
+     * Objet abrégé pour les listes : 15 caractères au plus, suivis de « ... »
+     * seulement s'il est plus long. La coupe se fait sur le dernier mot entier
+     * (un mot de plus de 15 caractères est coupé). Affichage uniquement :
+     * l'objet enregistré n'est jamais modifié et reste complet sur la fiche du
+     * dossier et dans les exports. Même règle côté React : resources/js/lib/text.js.
+     */
+    public function shortSubject(int $chars = self::SUBJECT_LIST_CHARS): string
+    {
+        $subject = trim(preg_replace('/\s+/u', ' ', (string) $this->subject));
+
+        if (mb_strlen($subject) <= $chars) {
+            return $subject;
+        }
+
+        $cut = mb_substr($subject, 0, $chars);
+        $space = mb_strrpos($cut, ' ');
+
+        // Mot coupé au milieu : on revient au dernier mot entier, s'il y en a un.
+        if (! preg_match('/^[\s,;:.!?)]/u', mb_substr($subject, $chars, 1)) && $space !== false) {
+            $cut = mb_substr($cut, 0, $space);
+        }
+
+        return preg_replace('/[\s,;:.\-–—]+$/u', '', $cut).' ...';
     }
 
     public function isExternal(): bool
@@ -149,9 +199,28 @@ class Dossier extends Model
     protected function relatedTo(Builder $query, User $user): Builder
     {
         return $query->where(fn (Builder $linked) => $linked
-            ->where('created_by', $user->id)
+            ->where(fn (Builder $sent) => $sent->sentBy($user))
             ->orWhereHas('recipients', fn (Builder $recipient) => $recipient->where('assigned_user_id', $user->id))
             ->orWhereHas('validations', fn (Builder $validation) => $validation->where('validator_id', $user->id)));
+    }
+
+    /**
+     * Dossiers envoyés par l'utilisateur, hors corbeille : la corbeille de
+     * l'expéditeur retire le dossier de son espace seulement.
+     */
+    #[Scope]
+    protected function sentBy(Builder $query, User $user): Builder
+    {
+        return $query->where('created_by', $user->id)->whereNull('trashed_by_sender_at');
+    }
+
+    /**
+     * Corbeille de l'expéditeur : dossiers retirés de son espace, encore restaurables.
+     */
+    #[Scope]
+    protected function inSenderTrash(Builder $query, User $user): Builder
+    {
+        return $query->where('created_by', $user->id)->whereNotNull('trashed_by_sender_at')->whereNull('purged_by_sender_at');
     }
 
     /**
@@ -280,5 +349,15 @@ class Dossier extends Model
     public function activityLogs(): HasMany
     {
         return $this->hasMany(DossierActivityLog::class);
+    }
+
+    /**
+     * Dernière action enregistrée (colonne « Modifié le / par »).
+     *
+     * @return HasOne<DossierActivityLog, $this>
+     */
+    public function latestActivity(): HasOne
+    {
+        return $this->hasOne(DossierActivityLog::class)->latestOfMany();
     }
 }

@@ -74,7 +74,7 @@ class DossierTrends
             [
                 'name' => 'Envoyés',
                 'color' => ['light' => '#eb6834', 'dark' => '#d95926'],
-                'dates' => Dossier::query()->where('created_by', $user->id)->where('created_at', '>=', $since)->pluck('created_at'),
+                'dates' => Dossier::query()->sentBy($user)->where('created_at', '>=', $since)->pluck('created_at'),
             ],
         ]);
     }

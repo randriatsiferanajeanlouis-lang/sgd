@@ -69,7 +69,7 @@ class DepartmentController extends Controller
         return view('admin.departments.index', [
             // Dossiers envoyés par l'utilisateur, par département destinataire (lecture seule).
             'sentCounts' => $canManage ? collect() : DossierRecipient::query()
-                ->whereHas('dossier', fn (Builder $dossier) => $dossier->where('created_by', $request->user()->id))
+                ->whereHas('dossier', fn (Builder $dossier) => $dossier->sentBy($request->user()))
                 ->selectRaw('department_id, COUNT(DISTINCT dossier_id) as total')
                 ->groupBy('department_id')
                 ->pluck('total', 'department_id'),
