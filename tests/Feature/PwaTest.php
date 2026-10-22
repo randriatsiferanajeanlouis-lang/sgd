@@ -42,8 +42,14 @@ class PwaTest extends TestCase
             ->assertOk()
             ->assertSee('<link rel="manifest" href="/manifest.webmanifest">', false)
             ->assertSee('apple-touch-icon', false)
-            ->assertSee('data-testid="pwa-install"', false)
-            ->assertSee('Installer l’application');
+            ->assertInertia(fn ($page) => $page->component('Auth/Login'));
+
+        // Bouton d'installation de la page de connexion (React).
+        $login = (string) file_get_contents(resource_path('js/pages/Auth/Login.jsx'));
+        $button = (string) file_get_contents(resource_path('js/components/app/PwaInstall.jsx'));
+        $this->assertStringContainsString('<PwaInstall variant="full"', $login);
+        $this->assertStringContainsString('data-testid="pwa-install"', $button);
+        $this->assertStringContainsString('Installer l’application', $button);
 
         $this->actingAs(User::factory()->withRole(Role::STAFF)->create())
             ->get(route('dashboard'))

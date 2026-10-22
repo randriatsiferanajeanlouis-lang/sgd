@@ -5,6 +5,7 @@ namespace Tests\Feature\Auth;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
@@ -17,9 +18,19 @@ class AuthenticationTest extends TestCase
     {
         $this->get(route('login'))
             ->assertOk()
-            ->assertSee('name="username"', false)
-            ->assertDontSee('name="email"', false)
-            ->assertDontSee('Créer un compte');
+            ->assertViewIs('inertia-guest')
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Auth/Login')
+                ->where('title', 'Connexion')
+                ->where('loginUrl', route('login.store')));
+
+        // La page est rendue par React : l'ancienne vue Blade n'existe plus.
+        $this->assertFalse(view()->exists('auth.login'));
+
+        $page = (string) file_get_contents(resource_path('js/pages/Auth/Login.jsx'));
+        $this->assertStringContainsString('name="username"', $page);
+        $this->assertStringNotContainsString('name="email"', $page);
+        $this->assertStringNotContainsString('Créer un compte', $page);
 
         $this->get('/register')->assertNotFound();
         $this->post('/register', ['username' => 'pirate'])->assertNotFound();
@@ -34,6 +45,31 @@ class AuthenticationTest extends TestCase
 
         $this->assertAuthenticatedAs($user);
         $this->assertNotNull($user->fresh()->last_login_at);
+    }
+
+    public function test_login_from_the_react_page_reloads_the_destination_page(): void
+    {
+        $this->employee(['username' => 'marie']);
+
+        // Requête Inertia : réponse 409 + X-Inertia-Location, la page d'arrivée
+        // (Blade ou React) est chargée normalement par le navigateur.
+        $this->withHeaders(['X-Inertia' => 'true', 'X-Requested-With' => 'XMLHttpRequest'])
+            ->post(route('login.store'), ['username' => 'marie', 'password' => 'password'])
+            ->assertStatus(409)
+            ->assertHeader('X-Inertia-Location', route('dashboard'));
+
+        $this->assertAuthenticated();
+    }
+
+    public function test_failed_login_from_the_react_page_returns_the_errors_to_the_form(): void
+    {
+        $this->from(route('login'))
+            ->withHeaders(['X-Inertia' => 'true', 'X-Requested-With' => 'XMLHttpRequest'])
+            ->post(route('login.store'), ['username' => 'inconnu', 'password' => 'password'])
+            ->assertRedirect(route('login'))
+            ->assertSessionHasErrors(['username' => 'Identifiant ou mot de passe incorrect.']);
+
+        $this->assertGuest();
     }
 
     public function test_unknown_username_is_rejected(): void

@@ -20,6 +20,15 @@ class HandleInertiaRequests extends Middleware
      */
     protected $rootView = 'inertia';
 
+    /**
+     * Les visiteurs non connectés (page de connexion) ont leur propre vue
+     * racine, sans menu ni en-tête : resources/views/inertia-guest.blade.php.
+     */
+    public function rootView(Request $request): string
+    {
+        return $request->user() ? $this->rootView : 'inertia-guest';
+    }
+
     public function version(Request $request): ?string
     {
         return parent::version($request);

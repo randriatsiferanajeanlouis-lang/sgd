@@ -26,9 +26,7 @@
 </script>
 
 @fonts
-@auth
-    @viteReactRefresh
-@endauth
+@viteReactRefresh
 @vite(['resources/css/app.css', 'resources/js/app.js'])
 @auth
     {{-- Toasts et recherche rapide (React) sur toutes les pages connectées --}}

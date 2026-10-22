@@ -188,7 +188,11 @@ class InterfaceTest extends TestCase
         $this->assertStringContainsString(route('notifications.index').'"', $aside);
 
         auth()->logout();
-        $this->get(route('login'))->assertSee('&copy; '.date('Y').' Jean Louis Pro', false);
+        $this->get(route('login'))->assertInertia(fn ($page) => $page->component('Auth/Login'));
+        $this->assertStringContainsString(
+            '© {new Date().getFullYear()} Jean Louis Pro',
+            (string) file_get_contents(resource_path('js/layouts/GuestLayout.jsx')),
+        );
     }
 
     public function test_my_dossiers_page_shows_the_grand_total_and_one_card_per_department(): void

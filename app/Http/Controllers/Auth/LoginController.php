@@ -7,16 +7,21 @@ use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class LoginController extends Controller
 {
-    public function create(): View
+    public function create(): Response
     {
-        return view('auth.login');
+        return Inertia::render('Auth/Login', [
+            'title' => 'Connexion',
+            'loginUrl' => route('login.store'),
+        ]);
     }
 
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request): HttpResponse
     {
         $request->authenticate();
 
@@ -24,7 +29,8 @@ class LoginController extends Controller
 
         $request->user()->forceFill(['last_login_at' => now()])->saveQuietly();
 
-        return redirect()->intended(route('dashboard'));
+        // Rechargement complet : la page d'arrivée peut encore être une page Blade.
+        return Inertia::location(redirect()->intended(route('dashboard'))->getTargetUrl());
     }
 
     public function destroy(Request $request): RedirectResponse
