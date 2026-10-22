@@ -6,14 +6,20 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\ChangePasswordRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class PasswordController extends Controller
 {
-    public function edit(Request $request): View
+    public function edit(Request $request): Response
     {
-        return view('auth.change-password', [
-            'isMandatory' => $request->user()->must_change_password,
+        return Inertia::render('Auth/ChangePassword', [
+            'title' => 'Mot de passe',
+            'isMandatory' => (bool) $request->user()->must_change_password,
+            'urls' => [
+                'update' => route('password.change.update'),
+                'cancel' => route('profile.show'),
+            ],
         ]);
     }
 

@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class PasswordManagementTest extends TestCase
@@ -67,7 +68,10 @@ class PasswordManagementTest extends TestCase
         $user = $this->userWithTemporaryPassword();
 
         $this->actingAs($user)->get(route('dashboard'))->assertRedirect(route('password.change'));
-        $this->get(route('password.change'))->assertOk()->assertSee('Remplacez votre mot de passe temporaire');
+        $this->get(route('password.change'))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Auth/ChangePassword')
+                ->where('isMandatory', true));
 
         $this->put(route('password.change.update'), [
             'current_password' => 'Temporaire1',
@@ -79,6 +83,46 @@ class PasswordManagementTest extends TestCase
         $this->assertFalse($user->must_change_password);
         $this->assertTrue(Hash::check('Nouveau2026', $user->password));
         $this->get(route('dashboard'))->assertOk();
+    }
+
+    public function test_change_password_page_is_rendered_by_react(): void
+    {
+        $user = User::factory()->withRole(Role::STAFF)->create();
+
+        $this->actingAs($user)->get(route('password.change'))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Auth/ChangePassword')
+                ->where('title', 'Mot de passe')
+                ->where('isMandatory', false)
+                ->where('urls.update', route('password.change.update'))
+                ->where('urls.cancel', route('profile.show')));
+
+        // L'ancienne vue Blade n'existe plus ; titres et champs sont dans la page React.
+        $this->assertFalse(view()->exists('auth.change-password'));
+        $page = (string) file_get_contents(resource_path('js/pages/Auth/ChangePassword.jsx'));
+        foreach (['Remplacez votre mot de passe temporaire', 'Changer mon mot de passe', "'current_password'", "'password'", "'password_confirmation'", '<FormPage'] as $needle) {
+            $this->assertStringContainsString($needle, $page);
+        }
+    }
+
+    public function test_password_change_from_the_react_page_returns_to_the_dashboard_with_a_message(): void
+    {
+        $user = $this->userWithTemporaryPassword();
+        $inertia = ['X-Inertia' => 'true', 'X-Requested-With' => 'XMLHttpRequest'];
+
+        // Erreur : retour au formulaire avec le message sous le champ.
+        $this->actingAs($user)->from(route('password.change'))->withHeaders($inertia)
+            ->put(route('password.change.update'), ['current_password' => 'Faux12345', 'password' => 'Nouveau2026', 'password_confirmation' => 'Nouveau2026'])
+            ->assertRedirect(route('password.change'))
+            ->assertSessionHasErrors('current_password');
+
+        $this->withHeaders($inertia)
+            ->put(route('password.change.update'), ['current_password' => 'Temporaire1', 'password' => 'Nouveau2026', 'password_confirmation' => 'Nouveau2026'])
+            ->assertStatus(303)
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('status', __('auth.password_changed'));
+
+        $this->assertFalse($user->fresh()->must_change_password);
     }
 
     public function test_password_change_requires_the_current_password_and_a_strong_new_one(): void

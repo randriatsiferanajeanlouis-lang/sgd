@@ -28,7 +28,6 @@ class NoModalFormTest extends TestCase
             [$admin, route('admin.departments.create'), 'Créer un département'],
             [$admin, route('admin.departments.edit', Department::query()->firstWhere('code', 'RSE')), 'Modifier le département'],
             [$staff, route('profile.edit'), 'Modifier mes coordonnées'],
-            [$staff, route('password.change'), 'Changer mon mot de passe'],
             [$staff, route('dossiers.edit', $dossier), 'Modifier le dossier'],
         ];
 
@@ -39,6 +38,12 @@ class NoModalFormTest extends TestCase
                 ->assertDontSee('id="modal-form"', false)
                 ->assertDontSee('fixed inset-0 z-50 overflow-y-auto', false);
         }
+
+        // Pages React : même formulaire en page (FormPage, id « page-form »), sans modale.
+        $this->actingAs($staff)->get(route('password.change'))->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Auth/ChangePassword'));
+        $this->assertStringContainsString('<FormPage', (string) file_get_contents(resource_path('js/pages/Auth/ChangePassword.jsx')));
+        $this->assertStringContainsString("id = 'page-form'", (string) file_get_contents(resource_path('js/components/form/FormPage.jsx')));
 
         $this->assertFileDoesNotExist(resource_path('views/components/form/modal.blade.php'));
     }
