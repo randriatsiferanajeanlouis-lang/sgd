@@ -29,4 +29,22 @@ class UpdateProfileRequest extends FormRequest
             'remove_photo' => ['boolean'],
         ];
     }
+
+    /**
+     * Photo trop lourde : même message, que le fichier soit arrêté par la
+     * limite d'envoi de PHP (« uploaded ») ou par la règle des 2 Mo.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'photo.uploaded' => self::PHOTO_TOO_LARGE,
+            'photo.max' => self::PHOTO_TOO_LARGE,
+            'photo.image' => 'La photo doit être une image JPG, PNG ou WebP.',
+            'photo.mimes' => 'La photo doit être une image JPG, PNG ou WebP.',
+        ];
+    }
+
+    public const PHOTO_TOO_LARGE = 'La photo est trop lourde : 2 Mo maximum.';
 }

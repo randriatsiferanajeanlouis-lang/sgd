@@ -5,6 +5,9 @@ import Field from '@/components/form/Field';
 import FormPage from '@/components/form/FormPage';
 import FormSection from '@/components/form/FormSection';
 
+const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+const PHOTO_TOO_LARGE = 'La photo est trop lourde : 2 Mo maximum.';
+
 /**
  * Modifier mes coordonnées (React). Règles inchangées côté Laravel
  * (UpdateProfileRequest) : seuls le téléphone, l'e-mail interne et la photo
@@ -57,7 +60,18 @@ export default function Edit({ profile, urls }) {
                                 type="file"
                                 accept="image/png,image/jpeg,image/webp"
                                 hint="JPG, PNG ou WebP, 2 Mo maximum."
-                                onChange={(file) => form.setData('photo', file)}
+                                onChange={(file, event) => {
+                                    // Vérifiée dès le choix : un fichier trop lourd n'est pas envoyé.
+                                    if (file && file.size > MAX_PHOTO_BYTES) {
+                                        event.target.value = '';
+                                        form.setData('photo', null);
+                                        form.setError('photo', PHOTO_TOO_LARGE);
+
+                                        return;
+                                    }
+                                    form.clearErrors('photo');
+                                    form.setData('photo', file);
+                                }}
                                 error={form.errors.photo}
                             />
                             {profile.photoUrl && (

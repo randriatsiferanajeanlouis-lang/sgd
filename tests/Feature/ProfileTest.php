@@ -183,6 +183,26 @@ class ProfileTest extends TestCase
         ])->assertSessionHasErrors('photo');
     }
 
+    public function test_too_large_photo_gets_a_clear_message(): void
+    {
+        $user = User::factory()->withRole(Role::STAFF)->create();
+
+        // Au-delà des 2 Mo autorisés
+        $this->actingAs($user)->put(route('profile.update'), [
+            'photo' => UploadedFile::fake()->create('grande.png', 3000, 'image/png'),
+        ])->assertSessionHasErrors(['photo' => 'La photo est trop lourde : 2 Mo maximum.']);
+
+        // Fichier arrêté par la limite d'envoi de PHP (upload_max_filesize)
+        $blocked = new UploadedFile(__FILE__, 'grande.png', 'image/png', UPLOAD_ERR_INI_SIZE, true);
+        $this->put(route('profile.update'), ['photo' => $blocked])
+            ->assertSessionHasErrors(['photo' => 'La photo est trop lourde : 2 Mo maximum.']);
+
+        // La page React vérifie aussi la taille avant l'envoi.
+        $page = (string) file_get_contents(resource_path('js/pages/Profile/Edit.jsx'));
+        $this->assertStringContainsString('2 * 1024 * 1024', $page);
+        $this->assertStringContainsString('La photo est trop lourde : 2 Mo maximum.', $page);
+    }
+
     public function test_theme_preference_is_remembered(): void
     {
         $user = User::factory()->withRole(Role::STAFF)->create();
