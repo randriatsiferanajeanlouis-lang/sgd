@@ -55,13 +55,14 @@ class OtherRequestTypeTest extends TestCase
         $this->assertSame('Demande de véhicule', $dossier->typeLabel());
 
         // Liste « Mes dossiers » et fiche du dossier du destinataire
-        $this->actingAs($recipient)->get(route('dossiers.index', ['box' => 'received']))->assertOk()->assertSee('Demande de véhicule');
+        $this->actingAs($recipient)->get(route('dossiers.index', ['box' => 'received']))->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Dossiers/Index')->where('dossiers.data.0.type', 'Demande de véhicule'));
         $this->get(route('dossiers.show', $dossier))->assertOk()->assertSee('Demande de véhicule');
 
         // Historique exporté et recherche
         $this->assertSame('Demande de véhicule', app(HistoryExporter::class)->data($dossier, $recipient)['header']['Type']);
-        $found = $this->get(route('dossiers.index', ['box' => 'all', 'search' => 'véhicule']))->viewData('dossiers');
-        $this->assertSame([$dossier->id], collect($found->items())->pluck('id')->all());
+        $found = $this->get(route('dossiers.index', ['box' => 'all', 'search' => 'véhicule']))->inertiaProps('dossiers.data');
+        $this->assertSame([$dossier->id], collect($found)->pluck('id')->all());
     }
 
     public function test_the_precision_is_ignored_for_any_other_type(): void

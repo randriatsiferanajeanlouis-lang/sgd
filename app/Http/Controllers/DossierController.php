@@ -18,6 +18,7 @@ use App\Services\DossierTrash;
 use App\Services\InternalRequestService;
 use App\Services\TreatmentService;
 use App\Support\Deadline;
+use App\Support\DossierListItem;
 use App\Support\Search;
 use App\Support\SubmissionGuard;
 use Illuminate\Database\Eloquent\Builder;
@@ -35,7 +36,7 @@ class DossierController extends Controller
     /**
      * Mes dossiers : reçus, envoyés, archivés ou tous.
      */
-    public function index(Request $request): View|JsonResponse
+    public function index(Request $request): InertiaResponse|JsonResponse
     {
         abort_unless($request->user()->hasPermission('view_own_dossiers'), 403);
 
@@ -69,16 +70,23 @@ class DossierController extends Controller
         // concerné (émetteur ou destinataire) ; un dossier peut concerner plusieurs départements.
         $mine = fn () => Dossier::query()->relatedTo($user);
 
-        return view('dossiers.index', [
+        return Inertia::render('Dossiers/Index', [
+            'title' => 'Mes dossiers',
             'box' => $box,
-            'dossiers' => $query->paginate(15)->withQueryString(),
             'selectedDepartment' => $departmentId,
+            'filters' => ['search' => $request->string('search')->toString(), 'status' => $request->string('status')->toString()],
+            'statuses' => collect(DossierStatus::cases())->map(fn (DossierStatus $status) => ['value' => $status->value, 'label' => $status->label()])->values(),
             'grandTotal' => $mine()->count(),
             'departmentTotals' => Department::query()->active()->orderBy('sort_order')->get(['id', 'name', 'code'])
                 ->map(fn (Department $department) => [
-                    'department' => $department,
+                    'id' => $department->id,
+                    'name' => $department->name,
+                    'code' => $department->code,
                     'total' => $mine()->concerningDepartment($department->id)->count(),
-                ]),
+                ])->values(),
+            'dossiers' => $query->paginate(15)->withQueryString()
+                ->through(fn (Dossier $dossier) => DossierListItem::for($dossier, $user)),
+            'urls' => ['index' => route('dossiers.index')],
         ]);
     }
 

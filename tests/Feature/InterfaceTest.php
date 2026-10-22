@@ -215,21 +215,25 @@ class InterfaceTest extends TestCase
 
         $response = $this->actingAs($head)->get(route('dossiers.index'))->assertOk();
 
-        $this->assertSame(3, $response->viewData('grandTotal'));
-        $totals = $response->viewData('departmentTotals')->mapWithKeys(fn ($row) => [$row['department']->code => $row['total']]);
+        $this->assertSame(3, $response->inertiaProps('grandTotal'));
+        $totals = collect($response->inertiaProps('departmentTotals'))->mapWithKeys(fn ($row) => [$row['code'] => $row['total']]);
         $this->assertSame(2, $totals['TECHNIQUE']);
         $this->assertSame(1, $totals['COLLECTE']);
         $this->assertSame(3, $totals['PRODUCTION']);
-        $this->assertSame(Department::query()->active()->count(), substr_count($response->getContent(), 'data-testid="department-total"'));
+        // Une carte par département actif (data-testid="department-total" dans la page React).
+        $this->assertCount(Department::query()->active()->count(), $totals);
+        $this->assertStringContainsString('data-testid="department-total"', (string) file_get_contents(resource_path('js/pages/Dossiers/Index.jsx')));
 
-        $this->get(route('dossiers.index', ['box' => 'all', 'department' => $collecte->id]))
+        $subjects = collect($this->get(route('dossiers.index', ['box' => 'all', 'department' => $collecte->id]))
             ->assertOk()
-            ->assertSee('Collecte crevettes')
-            ->assertDontSee('Vidange');
+            ->assertInertia(fn ($page) => $page->where('selectedDepartment', $collecte->id))
+            ->inertiaProps('dossiers.data'))->pluck('subject');
+        $this->assertTrue($subjects->contains(fn ($subject) => str_contains($subject, 'Collecte crevettes')));
+        $this->assertFalse($subjects->contains(fn ($subject) => str_contains($subject, 'Vidange')));
 
         // Un autre employé ne voit que ses propres dossiers dans les totaux.
-        $this->actingAs($toTechnique)->get(route('dossiers.index'))->assertViewHas('grandTotal', 2);
-        $this->assertSame(0, $this->get(route('dossiers.index'))->viewData('departmentTotals')->firstWhere('department.id', $collecte->id)['total']);
+        $this->actingAs($toTechnique)->get(route('dossiers.index'))->assertInertia(fn ($page) => $page->where('grandTotal', 2));
+        $this->assertSame(0, collect($this->get(route('dossiers.index'))->inertiaProps('departmentTotals'))->firstWhere('id', $collecte->id)['total']);
     }
 
     public function test_hr_gets_the_read_only_departments_list_with_links_to_the_dossiers_it_sent(): void

@@ -54,9 +54,9 @@ class LiveSearchTest extends TestCase
         foreach (['Razafy', 'hanta', 'Hanta Razafy', 'Razafy Hanta'] as $term) {
             $found = $this->actingAs($recipient)->get(route('dossiers.index', ['box' => 'all', 'search' => $term]))
                 ->assertOk()
-                ->viewData('dossiers');
+                ->inertiaProps('dossiers.data');
 
-            $this->assertSame(['Pièces moteur'], collect($found->items())->pluck('subject')->all(), "Recherche « {$term} »");
+            $this->assertSame(['Pièces moteur'], collect($found)->pluck('subject')->all(), "Recherche « {$term} »");
         }
 
         $this->getJson(route('dossiers.index', ['box' => 'all', 'search' => 'Razafy', 'suggest' => 1]))
@@ -75,9 +75,9 @@ class LiveSearchTest extends TestCase
         foreach (['Andriana', 'Lycée'] as $term) {
             $found = $this->actingAs($hr)->get(route('dossiers.index', ['box' => 'all', 'search' => $term]))
                 ->assertOk()
-                ->viewData('dossiers');
+                ->inertiaProps('dossiers.data');
 
-            $this->assertSame(['Demande de stage'], collect($found->items())->pluck('subject')->all(), "Recherche « {$term} »");
+            $this->assertSame(['Demande de stage'], collect($found)->pluck('subject')->all(), "Recherche « {$term} »");
         }
     }
 

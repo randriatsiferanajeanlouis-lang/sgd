@@ -30,8 +30,14 @@ class ViewButtonTest extends TestCase
         $button = 'aria-label="Voir le dossier '.$dossier->reference.'"';
 
         // Mes dossiers (destinataire et expéditeur)
-        $this->actingAs($recipient)->get(route('dossiers.index'))->assertOk()->assertSee($button, false)->assertSee(route('dossiers.show', $dossier).'"', false);
-        $this->actingAs($sender)->get(route('dossiers.index', ['box' => 'sent']))->assertSee($button, false);
+        // (page React : lien de la ligne transmis, bouton « Voir » dans DossierTable.jsx)
+        $this->actingAs($recipient)->get(route('dossiers.index'))->assertOk()
+            ->assertInertia(fn ($page) => $page->where('dossiers.data.0.showUrl', route('dossiers.show', $dossier)));
+        $this->actingAs($sender)->get(route('dossiers.index', ['box' => 'sent']))
+            ->assertInertia(fn ($page) => $page->where('dossiers.data.0.reference', $dossier->reference));
+        $table = (string) file_get_contents(resource_path('js/components/app/DossierTable.jsx'));
+        $this->assertStringContainsString('aria-label={`Voir le dossier ${dossier.reference}`}', $table);
+        $this->assertStringContainsString('href={dossier.showUrl}', $table);
 
         // Dossiers envoyés à un département (annuaire)
         $this->get(route('directory.dossiers', Department::query()->firstWhere('code', 'TECHNIQUE')))->assertSee($button, false);
@@ -60,10 +66,12 @@ class ViewButtonTest extends TestCase
         $this->assertSame('Livraison À ...', $subject('Livraison À Mahajanga'));
 
         // Mes dossiers (destinataire) : objet abrégé, objet complet en info-bulle ; la fiche garde l'objet complet.
+        // (page React : objet complet transmis, abrégé à l'affichage par shortText(), complet en info-bulle)
         $this->actingAs($recipient)->get(route('dossiers.index'))
-            ->assertSee('>'.$short.'</a>', false)
-            ->assertSee('title="'.$long.'"', false)
-            ->assertDontSee('>'.$long.'</a>', false);
+            ->assertInertia(fn ($page) => $page->where('dossiers.data.0.subject', $long));
+        $table = (string) file_get_contents(resource_path('js/components/app/DossierTable.jsx'));
+        $this->assertStringContainsString('{shortText(dossier.subject)}', $table);
+        $this->assertStringContainsString('title={dossier.subject}', $table);
         $this->get(route('dossiers.show', $dossier))->assertSee($long);
 
         // Historique : référence entière sur une ligne, objet abrégé.
