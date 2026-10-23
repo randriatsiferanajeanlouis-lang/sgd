@@ -18,11 +18,12 @@ class UserFormDepartmentsTest extends TestCase
     {
         $admin = User::factory()->withRole(Role::ADMIN)->create();
 
-        $html = $this->actingAs($admin)->get(route('admin.users.create'))->assertOk()->getContent();
-        preg_match('/<select[^>]*name="department_id".*?<\/select>/s', $html, $select);
+        $offered = collect($this->actingAs($admin)->get(route('admin.users.create'))->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Admin/Users/Create'))
+            ->inertiaProps('departments'))->pluck('label');
 
         foreach (Department::query()->active()->pluck('name') as $name) {
-            $this->assertStringContainsString(">{$name}</option>", $select[0], "« {$name} » doit être proposé à la création d’un compte.");
+            $this->assertContains($name, $offered->all(), "« {$name} » doit être proposé à la création d’un compte.");
         }
     }
 }

@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class UserController extends Controller
 {
@@ -89,21 +90,30 @@ class UserController extends Controller
         ]);
     }
 
-    public function create(): View
+    public function create(): InertiaResponse
     {
         Gate::authorize('create', User::class);
 
-        return view('admin.users.create', [
-            'departments' => Department::query()->active()->orderBy('sort_order')->get(['id', 'name']),
-            'roles' => Role::query()->orderBy('label')->get(['id', 'label']),
+        return Inertia::render('Admin/Users/Create', [
+            'title' => 'Créer un utilisateur',
+            'departments' => Department::query()->active()->orderBy('sort_order')->get(['id', 'name'])
+                ->map(fn (Department $department) => ['value' => (string) $department->id, 'label' => $department->name])->values(),
+            'roles' => Role::query()->orderBy('label')->get(['id', 'label'])
+                ->map(fn (Role $role) => ['value' => (string) $role->id, 'label' => $role->label])->values(),
+            'urls' => [
+                'store' => route('admin.users.store'),
+                'cancel' => route('admin.users.index'),
+            ],
         ]);
     }
 
-    public function store(StoreUserRequest $request): RedirectResponse
+    public function store(StoreUserRequest $request): Response
     {
         $user = $this->accounts->create($request->safe()->except('photo'), $request->file('photo'));
+        $request->session()->flash('status', "Le compte « {$user->username} » a été créé. L’utilisateur devra changer son mot de passe à la première connexion.");
 
-        return redirect()->route('admin.users.edit', $user)->with('status', "Le compte « {$user->username} » a été créé. L’utilisateur devra changer son mot de passe à la première connexion.");
+        // Rechargement complet vers la fiche du compte (Blade ou React).
+        return Inertia::location(route('admin.users.edit', $user));
     }
 
     public function edit(User $user): View
