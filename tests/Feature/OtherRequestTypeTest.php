@@ -90,7 +90,8 @@ class OtherRequestTypeTest extends TestCase
 
         $hr = User::query()->firstWhere('username', 'rh');
         $hr->forceFill(['must_change_password' => false])->save();
-        $this->actingAs($hr)->get(route('external-requests.create'))->assertOk()->assertSee('data-testid="other-request-type"', false);
+        $this->actingAs($hr)->get(route('external-requests.create'))->assertOk()->assertInertia(fn ($page) => $page->where('otherTypeId', $otherId));
+        $this->assertStringContainsString('data-testid="other-request-type"', (string) file_get_contents(resource_path('js/pages/ExternalRequests/Create.jsx')));
     }
 
     public function test_editing_keeps_history_of_the_precision_and_clears_it_when_the_type_changes(): void

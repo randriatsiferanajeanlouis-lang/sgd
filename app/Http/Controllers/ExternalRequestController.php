@@ -21,7 +21,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\View\View;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -73,15 +73,27 @@ class ExternalRequestController extends Controller
         ]);
     }
 
-    public function create(Request $request): View
+    public function create(Request $request): InertiaResponse
     {
         Gate::authorize('createExternal', Dossier::class);
 
-        return view('external-requests.create', [
-            'requestTypes' => RequestType::query()->active()->availableFor(RequestScope::External)->orderBy('sort_order')->pluck('name', 'id'),
-            'urgencyLevels' => UrgencyLevel::query()->active()->orderBy('sort_order')->get(['id', 'name', 'response_delay_hours']),
+        return Inertia::render('ExternalRequests/Create', [
+            'title' => 'Nouvelle demande externe',
+            'requestTypes' => RequestType::query()->active()->availableFor(RequestScope::External)->orderBy('sort_order')->get(['id', 'name'])
+                ->map(fn (RequestType $type) => ['value' => (string) $type->id, 'label' => $type->name])->values(),
+            'channels' => collect(ReceptionChannel::cases())->map(fn (ReceptionChannel $channel) => ['value' => $channel->value, 'label' => $channel->label()])->values(),
+            'urgencyLevels' => UrgencyLevel::query()->active()->orderBy('sort_order')->get(['id', 'name', 'response_delay_hours'])
+                ->map(fn (UrgencyLevel $level) => [
+                    'id' => $level->id,
+                    'response_delay_hours' => $level->response_delay_hours,
+                    'label' => $level->name.' — '.($level->response_delay_hours % 24 === 0 ? ($level->response_delay_hours / 24).' jour(s)' : $level->response_delay_hours.' h'),
+                ])->values(),
             'completeTypes' => RequestType::completeFormIds(),
-            'channels' => collect(ReceptionChannel::cases())->mapWithKeys(fn (ReceptionChannel $channel) => [$channel->value => $channel->label()]),
+            'otherTypeId' => RequestType::otherId(),
+            'today' => now()->toDateString(),
+            // Jeton à usage unique : le serveur refuse un second envoi du même formulaire.
+            'submission' => (string) Str::uuid(),
+            // Le responsable de chaque département est proposé en premier.
             'directory' => Department::query()
                 ->active()
                 ->orderBy('sort_order')
@@ -98,6 +110,10 @@ class ExternalRequestController extends Controller
                             'job_title' => $member->id === $department->manager_id ? 'Responsable — '.$member->job_title : $member->job_title,
                         ])->values()->all(),
                 ])->all(),
+            'urls' => [
+                'store' => route('external-requests.store'),
+                'back' => route('external-requests.index'),
+            ],
         ]);
     }
 

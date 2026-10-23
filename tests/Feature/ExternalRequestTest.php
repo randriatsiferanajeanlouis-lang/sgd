@@ -68,7 +68,8 @@ class ExternalRequestTest extends TestCase
         Notification::fake();
 
         // RH enregistre une demande de stage avec CV, urgence normale, pour le responsable RSE.
-        $this->actingAs($this->hr)->get(route('external-requests.create'))->assertOk()->assertSee('Date d’échéance (calculée)');
+        $this->actingAs($this->hr)->get(route('external-requests.create'))->assertOk()->assertInertia(fn ($page) => $page->component('ExternalRequests/Create'));
+        $this->assertStringContainsString('Date d’échéance (calculée)', (string) file_get_contents(resource_path('js/pages/ExternalRequests/Create.jsx')));
         $dossier = $this->registerStageRequest([$this->rseManager]);
 
         $this->assertMatchesRegularExpression('/^DOS-\d{4}-\d{6}$/', $dossier->reference);
@@ -187,14 +188,14 @@ class ExternalRequestTest extends TestCase
 
     public function test_form_is_split_into_two_steps(): void
     {
-        $this->actingAs($this->hr)->get(route('external-requests.create'))
-            ->assertOk()
-            ->assertSeeInOrder(['Demande et demandeur', 'Réception, transmission et description', 'Enregistrer et transmettre'])
-            ->assertSee('data-step="1"', false)
-            ->assertSee('data-step="2"', false)
-            ->assertSee('formColumns(', false)
-            ->assertSee('xl:grid-cols-2', false)
-            ->assertDontSee('id="modal-form"', false);
+        // Page React : deux colonnes numérotées (FormColumns / FormPanel), sans modale.
+        $this->actingAs($this->hr)->get(route('external-requests.create'))->assertOk()->assertInertia(fn ($page) => $page->component('ExternalRequests/Create'));
+        $create = (string) file_get_contents(resource_path('js/pages/ExternalRequests/Create.jsx'));
+        $this->assertStringContainsString('<FormPanel number={1} title="Demande et demandeur"', $create);
+        $this->assertStringContainsString('<FormPanel number={2} title="Réception, transmission et description"', $create);
+        $this->assertLessThan(strpos($create, 'Réception, transmission et description'), strpos($create, 'Demande et demandeur'));
+        $this->assertStringContainsString('submitLabel="Enregistrer et transmettre"', $create);
+        $this->assertFalse(view()->exists('external-requests.create'));
 
         // Le bouton « Nouvelle demande externe » mène à cette page.
         $this->get(route('external-requests.index'))->assertInertia(fn ($page) => $page->where('can.create', true)->where('urls.create', route('external-requests.create')));
@@ -266,8 +267,10 @@ class ExternalRequestTest extends TestCase
     public function test_external_request_is_confirmed_and_never_registered_twice(): void
     {
         $this->actingAs($this->hr)->get(route('external-requests.create'))
-            ->assertSee('Êtes-vous sûr de vouloir transmettre cette demande externe à')
-            ->assertSee('name="_submission"', false);
+            ->assertInertia(fn ($page) => $page->where('submission', fn ($token) => \Illuminate\Support\Str::isUuid($token)));
+        $create = (string) file_get_contents(resource_path('js/pages/ExternalRequests/Create.jsx'));
+        $this->assertStringContainsString('Êtes-vous sûr de vouloir transmettre cette demande externe à', $create);
+        $this->assertStringContainsString('_submission: submission', $create);
 
         $payload = [...$this->stagePayload([$this->rseManager]), '_submission' => (string) \Illuminate\Support\Str::uuid()];
         $this->post(route('external-requests.store'), $payload)->assertSessionHasNoErrors();
