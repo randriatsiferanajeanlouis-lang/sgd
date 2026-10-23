@@ -59,13 +59,13 @@ class SettingsTest extends TestCase
         $this->assertTrue($type->is_active);
 
         $employee = $this->makeUser(Role::STAFF);
-        $this->actingAs($employee)->get(route('dossiers.create'))->assertSee('Demande de véhicule');
+        $this->actingAs($employee)->get(route('dossiers.create'))->assertPropsSee('Demande de véhicule');
         $this->sendInternalRequest($employee, [$this->makeUser(Role::STAFF, 'RSE')], ['request_type_id' => $type->id]);
 
         $this->actingAs($this->admin)->put(route('admin.settings.request-types.update', $type), ['name' => 'Demande de véhicule', 'scope' => 'internal']);
         $this->assertFalse($type->fresh()->is_active);
 
-        $this->actingAs($employee)->get(route('dossiers.create'))->assertDontSee('Demande de véhicule');
+        $this->actingAs($employee)->get(route('dossiers.create'))->assertPropsDontSee('Demande de véhicule');
         $this->post(route('dossiers.store'), ['subject' => 'x', 'request_type_id' => $type->id, 'due_at' => now()->toDateString(), 'recipients' => [$this->admin->id]])
             ->assertSessionHasErrors('request_type_id');
         $this->assertSame($type->id, Dossier::query()->first()->request_type_id, 'les dossiers existants gardent leur type');

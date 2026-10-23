@@ -27,6 +27,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -230,15 +231,25 @@ class DossierController extends Controller
             ->with('status', "Le dossier {$dossier->reference} a été placé dans la corbeille. Les destinataires le conservent.");
     }
 
-    public function create(Request $request): View
+    public function create(Request $request): InertiaResponse
     {
         Gate::authorize('createInternal', Dossier::class);
 
-        return view('dossiers.create', [
-            'requestTypes' => RequestType::query()->active()->availableFor(RequestScope::Internal)->orderBy('sort_order')->pluck('name', 'id'),
+        return Inertia::render('Dossiers/Create', [
+            'title' => 'Nouvelle demande',
+            'requestTypes' => RequestType::query()->active()->availableFor(RequestScope::Internal)->orderBy('sort_order')->get(['id', 'name'])
+                ->map(fn (RequestType $type) => ['value' => (string) $type->id, 'label' => $type->name])->values(),
             'urgencyLevels' => UrgencyLevel::query()->active()->orderBy('sort_order')->get(['id', 'name', 'response_delay_hours']),
             'directory' => $this->recipientDirectory($request->user()->id),
             'completeTypes' => RequestType::completeFormIds(),
+            'otherTypeId' => RequestType::otherId(),
+            'today' => now()->toDateString(),
+            // Jeton à usage unique : le serveur refuse un second envoi du même formulaire.
+            'submission' => (string) Str::uuid(),
+            'urls' => [
+                'store' => route('dossiers.store'),
+                'back' => route('requests.index'),
+            ],
         ]);
     }
 

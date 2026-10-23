@@ -85,8 +85,8 @@ class OtherRequestTypeTest extends TestCase
         $sender = $this->makeUser(Role::STAFF);
 
         $this->actingAs($sender)->get(route('dossiers.create'))->assertOk()
-            ->assertSee('data-testid="other-request-type"', false)
-            ->assertSee("type === '{$otherId}'", false);
+            ->assertInertia(fn ($page) => $page->where('otherTypeId', $otherId));
+        $this->assertStringContainsString('data-testid="other-request-type"', (string) file_get_contents(resource_path('js/pages/Dossiers/Create.jsx')));
 
         $hr = User::query()->firstWhere('username', 'rh');
         $hr->forceFill(['must_change_password' => false])->save();

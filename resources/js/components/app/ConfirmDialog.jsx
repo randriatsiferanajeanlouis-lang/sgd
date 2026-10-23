@@ -13,6 +13,7 @@ export default function ConfirmDialog({
     title,
     question,
     names = null,
+    subject = null,
     confirmLabel,
     onConfirm,
     processing = false,
@@ -47,6 +48,12 @@ export default function ConfirmDialog({
 
                 {names && (
                     <div className="space-y-3 border-t border-univ-line bg-univ-surface/60 px-6 py-4 text-sm dark:border-slate-800 dark:bg-slate-950/30">
+                        {subject && (
+                            <div>
+                                <div className="text-[11px] font-bold tracking-[0.06em] text-univ-muted uppercase dark:text-slate-400">Objet</div>
+                                <div className="mt-0.5 font-medium break-words">{subject}</div>
+                            </div>
+                        )}
                         <div>
                             <div className="text-[11px] font-bold tracking-[0.06em] text-univ-muted uppercase dark:text-slate-400">
                                 {names.length > 1 ? `${names.length} destinataires` : 'Destinataire'}

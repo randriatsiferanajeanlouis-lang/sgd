@@ -35,7 +35,8 @@ class InternalRequestTest extends TestCase
         $first = $this->makeUser(Role::STAFF, 'TECHNIQUE');
         $second = $this->makeUser(Role::STAFF, 'TECHNIQUE');
 
-        $this->actingAs($sender)->get(route('dossiers.create'))->assertOk()->assertSee('Département destinataire');
+        $this->actingAs($sender)->get(route('dossiers.create'))->assertOk()->assertInertia(fn ($page) => $page->component('Dossiers/Create')->has('directory'));
+        $this->assertStringContainsString('Département destinataire', (string) file_get_contents(resource_path('js/components/form/RecipientPicker.jsx')));
 
         $dossier = $this->sendInternalRequest($sender, [$first, $second], ['attachments' => [$this->pdf()]]);
 
@@ -223,23 +224,28 @@ class InternalRequestTest extends TestCase
         // Le bouton « Nouvelle demande » de la liste « Demande » mène à la page dédiée.
         $this->actingAs($sender)->get(route('requests.index'))->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page->where('urls.create', route('dossiers.create')));
 
-        $this->get(route('dossiers.create'))->assertOk()
-            ->assertDontSee('id="modal-form"', false)
-            ->assertDontSee('formSteps(', false)
-            ->assertSee('formColumns(', false)
-            ->assertSee('data-step="1"', false)
-            ->assertSee('data-step="2"', false)
-            ->assertSee('xl:grid-cols-2', false)
-            ->assertSeeInOrder(['Demande et échéance', 'Destinataires et description', 'Envoyer la demande']);
+        // Page React : deux colonnes numérotées côte à côte (FormColumns / FormPanel), sans modale.
+        $this->get(route('dossiers.create'))->assertOk()->assertInertia(fn ($page) => $page->component('Dossiers/Create'));
+        $create = (string) file_get_contents(resource_path('js/pages/Dossiers/Create.jsx'));
+        $this->assertStringContainsString('<FormColumns', $create);
+        $this->assertStringContainsString('<FormPanel number={1} title="Demande et échéance"', $create);
+        $this->assertStringContainsString('<FormPanel number={2} title="Destinataires et description"', $create);
+        $this->assertLessThan(strpos($create, 'Destinataires et description'), strpos($create, 'Demande et échéance'));
+        $this->assertStringContainsString('submitLabel="Envoyer la demande"', $create);
+        $this->assertStringContainsString('xl:grid-cols-2', (string) file_get_contents(resource_path('js/components/form/FormColumns.jsx')));
+        $this->assertFalse(view()->exists('dossiers.create'));
 
         // Erreurs : retour sur la page, colonnes en erreur signalées.
         $this->from(route('dossiers.create'))->post(route('dossiers.store'), ['subject' => ''])
             ->assertRedirect(route('dossiers.create'))
             ->assertSessionHasErrors(['subject', 'recipients']);
+        // Les erreurs reviennent à la page React (bandeau et colonnes en rouge affichés par FormColumns / FormPanel).
         $this->from(route('dossiers.create'))->followingRedirects()->post(route('dossiers.store'), ['subject' => ''])
             ->assertOk()
-            ->assertSee('Le formulaire contient des erreurs')
-            ->assertSee('ring-red-300', false);
+            ->assertInertia(fn ($page) => $page->component('Dossiers/Create')->has('errors.subject')->has('errors.recipients'));
+        $columns = (string) file_get_contents(resource_path('js/components/form/FormColumns.jsx'));
+        $this->assertStringContainsString('Le formulaire contient des erreurs', $columns);
+        $this->assertStringContainsString('ring-red-300', $columns);
 
         // Envoi complet : le dossier est créé et le destinataire prévenu.
         $dossier = $this->sendInternalRequest($sender, [$recipient], ['subject' => 'Demande depuis la nouvelle page']);
@@ -256,7 +262,7 @@ class InternalRequestTest extends TestCase
 
         $this->actingAs($sender)->get(route('dossiers.create'))
             ->assertOk()
-            ->assertSeeInOrder(['Demande et échéance', 'Destinataires et description']);
+            ->assertInertia(fn ($page) => $page->where('completeTypes', fn ($ids) => collect($ids)->contains($type->id)));
 
         $payload = [
             'subject' => 'Gants de protection',

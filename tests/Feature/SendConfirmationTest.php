@@ -35,11 +35,14 @@ class SendConfirmationTest extends TestCase
         Department::query()->where('code', 'TECHNIQUE')->update(['manager_id' => $head->id]);
 
         // Nouvelle demande : fenêtre de confirmation et jeton anti double envoi.
+        // Page React : jeton à usage unique fourni par Laravel, confirmation et message sans destinataire.
         $this->actingAs($sender)->get(route('dossiers.create'))->assertOk()
-            ->assertSee('Confirmer l’envoi')
-            ->assertSee('Êtes-vous sûr de vouloir envoyer cette demande à')
-            ->assertSee('name="_submission"', false)
-            ->assertSee('Aucun destinataire sélectionné');
+            ->assertInertia(fn ($page) => $page->where('submission', fn ($token) => \Illuminate\Support\Str::isUuid($token)));
+        $create = (string) file_get_contents(resource_path('js/pages/Dossiers/Create.jsx'));
+        $this->assertStringContainsString('Confirmer l’envoi', $create);
+        $this->assertStringContainsString('Êtes-vous sûr de vouloir envoyer cette demande à', $create);
+        $this->assertStringContainsString('_submission: submission', $create);
+        $this->assertStringContainsString('Aucun destinataire sélectionné', (string) file_get_contents(resource_path('js/components/form/FormColumns.jsx')));
 
         // Fiche du dossier : transmission à un autre utilisateur et au responsable.
         $dossier = $this->sendInternalRequest($sender, [$recipient]);
