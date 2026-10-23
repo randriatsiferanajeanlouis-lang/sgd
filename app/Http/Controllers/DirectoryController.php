@@ -6,11 +6,11 @@ use App\Models\Department;
 use App\Models\Dossier;
 use App\Models\DossierRecipient;
 use App\Models\User;
+use App\Support\DossierListItem;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -67,7 +67,7 @@ class DirectoryController extends Controller
     /**
      * Dossiers que l'utilisateur a envoyés à un département.
      */
-    public function dossiers(Request $request, Department $department): View
+    public function dossiers(Request $request, Department $department): InertiaResponse
     {
         Gate::authorize('viewDirectory', Department::class);
 
@@ -78,7 +78,17 @@ class DirectoryController extends Controller
             ->latest('id')
             ->paginate(15);
 
-        return view('directory.dossiers', ['department' => $department, 'dossiers' => $dossiers]);
+        $user = $request->user();
+
+        return Inertia::render('Directory/Dossiers', [
+            'title' => 'Dossiers envoyés — '.$department->name,
+            'department' => ['id' => $department->id, 'name' => $department->name],
+            'dossiers' => $dossiers->through(fn (Dossier $dossier) => DossierListItem::for($dossier, $user)),
+            'urls' => [
+                // Responsables et RH : page « Départements » de l'espace Responsable ; sinon l'annuaire.
+                'back' => $user->can('viewAny', Department::class) ? route('admin.departments.index') : route('directory.index'),
+            ],
+        ]);
     }
 
     /**

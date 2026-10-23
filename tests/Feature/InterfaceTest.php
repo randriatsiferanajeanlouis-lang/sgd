@@ -93,7 +93,7 @@ class InterfaceTest extends TestCase
 
             $this->get(route('directory.dossiers', Department::query()->firstWhere('code', 'COLLECTE')))
                 ->assertOk()
-                ->assertSee(route('admin.departments.index').'"', false);
+                ->assertInertia(fn ($page) => $page->component('Directory/Dossiers')->where('urls.back', route('admin.departments.index')));
         }
 
         $this->actingAs($this->user(Role::ADMIN, 'ADMINISTRATION'))->get(route('dashboard'))
@@ -132,18 +132,19 @@ class InterfaceTest extends TestCase
 
         $this->actingAs($head)->get(route('directory.dossiers', $technique))
             ->assertOk()
-            ->assertSee('Pièces moteur')
-            ->assertSee('Vidange');
+            ->assertInertia(fn ($page) => $page->where('department.name', 'Technique')->has('dossiers.data', 2))
+            ->assertPropsSee('Pièces moteur', 'Vidange');
 
         $collecte = Department::query()->firstWhere('code', 'COLLECTE');
         $this->actingAs($head)->get(route('directory.dossiers', $collecte))
             ->assertOk()
-            ->assertSee('Aucun dossier');
+            ->assertInertia(fn ($page) => $page->has('dossiers.data', 0));
 
         // Seuls les dossiers envoyés par l'utilisateur lui-même sont listés.
         $this->actingAs($recipient)->get(route('directory.dossiers', $technique))
             ->assertOk()
-            ->assertSee('Aucun dossier');
+            ->assertInertia(fn ($page) => $page->has('dossiers.data', 0)->where('urls.back', route('directory.index')));
+        $this->assertFalse(view()->exists('directory.dossiers'));
     }
 
     public function test_history_page_in_the_sidebar_follows_history_permissions(): void

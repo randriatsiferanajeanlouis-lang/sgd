@@ -40,7 +40,9 @@ class ViewButtonTest extends TestCase
         $this->assertStringContainsString('href={dossier.showUrl}', $table);
 
         // Dossiers envoyés à un département (annuaire)
-        $this->get(route('directory.dossiers', Department::query()->firstWhere('code', 'TECHNIQUE')))->assertSee($button, false);
+        $this->get(route('directory.dossiers', Department::query()->firstWhere('code', 'TECHNIQUE')))
+            ->assertInertia(fn ($page) => $page->component('Directory/Dossiers')->where('dossiers.data.0.showUrl', route('dossiers.show', $dossier)));
+        $this->assertStringContainsString('<DossierTable', (string) file_get_contents(resource_path('js/pages/Directory/Dossiers.jsx')));
 
         // Historique
         $this->get(route('history.index'))->assertOk()->assertInertia(fn ($page) => $page->where('logs.data.0.dossier.url', route('dossiers.show', $dossier).'#historique'));
