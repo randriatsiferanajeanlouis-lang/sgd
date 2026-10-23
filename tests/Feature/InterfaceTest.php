@@ -68,12 +68,10 @@ class InterfaceTest extends TestCase
 
         $this->actingAs($this->user(Role::STAFF))->get(route('directory.index'))
             ->assertOk()
-            ->assertSee('Technique')
-            ->assertSee('Hery Rabe')
-            ->assertSee('Mécanicien')
-            ->assertDontSee('0349998877')
-            ->assertDontSee('hery@example.com')
-            ->assertDontSee('Parti');
+            ->assertInertia(fn ($page) => $page->component('Directory/Index'))
+            ->assertPropsSee('Technique', 'Hery Rabe', 'Mécanicien')
+            ->assertPropsDontSee('0349998877', 'hery@example.com', 'Parti');
+        $this->assertFalse(view()->exists('directory.index'));
     }
 
     public function test_managers_get_departments_only_in_the_manager_space(): void
@@ -122,13 +120,15 @@ class InterfaceTest extends TestCase
 
         $response = $this->actingAs($head)->get(route('directory.index'))
             ->assertOk()
-            ->assertSeeInOrder(['Administration', 'RSE', 'Collecte', 'Production', 'Armement', 'Technique'])
-            ->assertDontSee('Ancien service');
+            ->assertPropsDontSee('Ancien service');
+        $cards = collect($response->inertiaProps('departments'));
 
-        $this->assertSame(2, (int) $response->viewData('sentCounts')[$technique->id]);
-        $this->assertSame(Department::query()->active()->count(), substr_count($response->getContent(), 'data-testid="department-card"'));
-
-        $response->assertSee(route('directory.dossiers', $technique), false);
+        // Une carte par département actif, dans l'ordre, avec le nombre de dossiers envoyés et le lien vers ces dossiers.
+        $this->assertSame(['Administration', 'RSE', 'Collecte', 'Production', 'Armement', 'Technique'], $cards->pluck('name')->all());
+        $this->assertSame(Department::query()->active()->count(), $cards->count());
+        $this->assertSame(2, $cards->firstWhere('id', $technique->id)['sent']);
+        $this->assertSame(route('directory.dossiers', $technique), $cards->firstWhere('id', $technique->id)['dossiersUrl']);
+        $this->assertStringContainsString('data-testid="department-card"', (string) file_get_contents(resource_path('js/pages/Directory/Index.jsx')));
 
         $this->actingAs($head)->get(route('directory.dossiers', $technique))
             ->assertOk()

@@ -11,6 +11,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 /**
  * Annuaire pour trouver un destinataire : département → nom et fonction.
@@ -18,17 +20,19 @@ use Illuminate\View\View;
  */
 class DirectoryController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): InertiaResponse
     {
         Gate::authorize('viewDirectory', Department::class);
 
-        return view('directory.index', [
-            // Dossiers envoyés par l'utilisateur, comptés une fois par département destinataire.
-            'sentCounts' => DossierRecipient::query()
-                ->whereHas('dossier', fn (Builder $dossier) => $dossier->sentBy($request->user()))
-                ->selectRaw('department_id, COUNT(DISTINCT dossier_id) as total')
-                ->groupBy('department_id')
-                ->pluck('total', 'department_id'),
+        // Dossiers envoyés par l'utilisateur, comptés une fois par département destinataire.
+        $sentCounts = DossierRecipient::query()
+            ->whereHas('dossier', fn (Builder $dossier) => $dossier->sentBy($request->user()))
+            ->selectRaw('department_id, COUNT(DISTINCT dossier_id) as total')
+            ->groupBy('department_id')
+            ->pluck('total', 'department_id');
+
+        return Inertia::render('Directory/Index', [
+            'title' => 'Départements',
             'departments' => Department::query()
                 ->active()
                 ->orderBy('sort_order')
@@ -38,7 +42,25 @@ class DirectoryController extends Controller
                         ->select(['id', 'department_id', 'first_name', 'last_name', 'name', 'job_title', 'photo_path'])
                         ->orderBy('last_name'),
                 ])
-                ->get(['id', 'name', 'code', 'manager_id']),
+                ->get(['id', 'name', 'code', 'manager_id'])
+                ->map(fn (Department $department) => [
+                    'id' => $department->id,
+                    'name' => $department->name,
+                    'code' => $department->code,
+                    'managerName' => $department->users->firstWhere('id', $department->manager_id)?->name,
+                    'sent' => (int) ($sentCounts[$department->id] ?? 0),
+                    'dossiersUrl' => route('directory.dossiers', $department),
+                    // Nom, fonction et photo uniquement : aucune donnée personnelle (téléphone, e-mail).
+                    'members' => $department->users->map(fn (User $member) => [
+                        'id' => $member->id,
+                        'name' => $member->name,
+                        'jobTitle' => $member->job_title,
+                        'initials' => $member->initials(),
+                        'photoUrl' => $member->photo_path ? route('users.photo', $member) : null,
+                        'isManager' => $member->id === $department->manager_id,
+                    ])->values(),
+                ])
+                ->values(),
         ]);
     }
 
