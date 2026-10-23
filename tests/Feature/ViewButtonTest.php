@@ -43,7 +43,8 @@ class ViewButtonTest extends TestCase
         $this->get(route('directory.dossiers', Department::query()->firstWhere('code', 'TECHNIQUE')))->assertSee($button, false);
 
         // Historique
-        $this->get(route('history.index'))->assertOk()->assertSee($button, false);
+        $this->get(route('history.index'))->assertOk()->assertInertia(fn ($page) => $page->where('logs.data.0.dossier.url', route('dossiers.show', $dossier).'#historique'));
+        $this->assertStringContainsString('aria-label={`Voir le dossier ${row.dossier.reference}`}', (string) file_get_contents(resource_path('js/pages/History/Index.jsx')));
     }
 
     public function test_lists_show_at_most_fifteen_words_of_the_subject(): void
@@ -75,9 +76,10 @@ class ViewButtonTest extends TestCase
         $this->get(route('dossiers.show', $dossier))->assertInertia(fn ($page) => $page->where('dossier.subject', $long));
 
         // Historique : référence entière sur une ligne, objet abrégé.
-        $this->get(route('history.index'))
-            ->assertSee('whitespace-nowrap text-brand-500', false)
-            ->assertSee('>'.$short.'</span>', false);
+        $this->get(route('history.index'))->assertInertia(fn ($page) => $page->where('logs.data.0.dossier.subject', $long));
+        $history = (string) file_get_contents(resource_path('js/pages/History/Index.jsx'));
+        $this->assertStringContainsString('whitespace-nowrap text-brand-500', $history);
+        $this->assertStringContainsString('{shortText(row.dossier.subject)}', $history);
 
         // Suggestions de recherche : objet abrégé.
         $this->getJson(route('dossiers.index', ['box' => 'all', 'search' => 'quatorze', 'suggest' => 1]))

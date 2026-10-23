@@ -10,7 +10,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
@@ -23,7 +24,7 @@ class HistoryController extends Controller
     /**
      * Dernières actions sur tous les dossiers dont l'utilisateur peut lire l'historique.
      */
-    public function index(Request $request): View
+    public function index(Request $request): InertiaResponse
     {
         Gate::authorize('viewAnyHistory', Dossier::class);
 
@@ -41,12 +42,19 @@ class HistoryController extends Controller
             ->paginate(25)
             ->withQueryString();
 
-        return view('history.index', [
-            'logs' => $logs,
-            'rows' => $logs->getCollection()->map(fn (DossierActivityLog $log) => [
-                'dossier' => $log->dossier,
+        return Inertia::render('History/Index', [
+            'title' => 'Historique',
+            'search' => $search,
+            'logs' => $logs->through(fn (DossierActivityLog $log) => [
+                'id' => $log->id,
+                'dossier' => [
+                    'reference' => $log->dossier->reference,
+                    'subject' => $log->dossier->subject,
+                    'url' => route('dossiers.show', $log->dossier).'#historique',
+                ],
                 ...$this->exporter->row($log, $user),
             ]),
+            'urls' => ['index' => route('history.index')],
         ]);
     }
 

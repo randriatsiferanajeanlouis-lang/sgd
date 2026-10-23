@@ -162,10 +162,10 @@ class InterfaceTest extends TestCase
         ])->assertSessionHasNoErrors();
 
         $this->get(route('dashboard'))->assertSee(route('history.index').'"', false);
-        $this->get(route('history.index'))->assertOk()->assertSee('Pièces moteur')->assertSee('DOS-');
+        $this->get(route('history.index'))->assertOk()->assertInertia(fn ($page) => $page->component('History/Index'))->assertPropsSee('Pièces moteur', 'DOS-');
 
-        $this->actingAs($recipient)->get(route('history.index'))->assertOk()->assertSee('Pièces moteur');
-        $this->actingAs($outsider)->get(route('history.index'))->assertOk()->assertDontSee('Pièces moteur');
+        $this->actingAs($recipient)->get(route('history.index'))->assertOk()->assertPropsSee('Pièces moteur');
+        $this->actingAs($outsider)->get(route('history.index'))->assertOk()->assertPropsDontSee('Pièces moteur');
 
         // Administrateur : aucune permission d'historique, ni bouton ni page.
         $admin = $this->user(Role::ADMIN, 'ADMINISTRATION');
