@@ -24,13 +24,13 @@ class DepartmentManagementTest extends TestCase
 
         $response = $this->actingAs($this->admin())->get(route('admin.departments.index'))->assertOk();
 
-        foreach (['Administration', 'RSE', 'Collecte', 'Production', 'Armement', 'Technique'] as $name) {
-            $response->assertSee($name);
-        }
+        $response->assertInertia(fn ($page) => $page->component('Admin/Departments/Index')->where('can.create', true));
+        $this->assertSame(['Administration', 'RSE', 'Collecte', 'Production', 'Armement', 'Technique'], collect($response->inertiaProps('departments'))->pluck('name')->all());
 
-        $counts = collect($response->viewData('departments'))->firstWhere('code', 'PRODUCTION');
-        $this->assertSame(1, $counts->active_users_count);
-        $this->assertSame(1, (int) $counts->dossiers_count);
+        $counts = collect($response->inertiaProps('departments'))->firstWhere('code', 'PRODUCTION');
+        $this->assertSame(1, $counts['activeUsersCount']);
+        $this->assertSame(1, $counts['dossiersCount']);
+        $this->assertFalse(view()->exists('admin.departments.index'));
     }
 
     public function test_admin_creates_and_updates_a_department(): void
@@ -101,8 +101,9 @@ class DepartmentManagementTest extends TestCase
 
         $response = $this->actingAs($head)->get(route('admin.departments.index'))->assertOk();
 
-        $response->assertDontSee(route('admin.departments.create'), false);
-        $response->assertDontSee('Ajout département');
+        // Lecture seule : pas de bouton « Ajout département », ni Modifier / Désactiver.
+        $response->assertInertia(fn ($page) => $page->where('can.create', false)
+            ->where('departments', fn ($rows) => collect($rows)->every(fn ($row) => $row['canUpdate'] === false)));
 
         $this->actingAs($head)->get(route('admin.departments.create'))->assertForbidden();
         $this->actingAs($head)->post(route('admin.departments.store'), ['name' => 'Test', 'code' => 'TEST'])->assertForbidden();
@@ -121,18 +122,19 @@ class DepartmentManagementTest extends TestCase
 
         $response = $this->actingAs($admin)->get(route('admin.departments.index'))->assertOk();
 
-        $card = collect($response->viewData('cards'))->firstWhere('code', 'PRODUCTION');
-        $this->assertSame(1, $card->users_count);
-        $this->assertSame(0, $card->active_users_count);
-        $this->assertSame(User::query()->where('is_active', true)->count(), $response->viewData('totals')['active']);
-        $response->assertSee(route('admin.users.index', ['department' => $production->id]), false);
+        $card = collect($response->inertiaProps('cards'))->firstWhere('code', 'PRODUCTION');
+        $this->assertSame(1, $card['usersCount']);
+        $this->assertSame(0, $card['activeUsersCount']);
+        $this->assertSame(User::query()->where('is_active', true)->count(), $response->inertiaProps('totals.active'));
+        $this->assertSame(route('admin.users.index', ['department' => $production->id]), $card['usersUrl']);
+        $response->assertInertia(fn ($page) => $page->where('can.manageUsers', true));
     }
 
     public function test_search_filters_departments_and_suggests_while_typing(): void
     {
         $this->actingAs($this->admin());
 
-        $names = collect($this->get(route('admin.departments.index', ['search' => 'P']))->viewData('departments'))->pluck('code');
+        $names = collect($this->get(route('admin.departments.index', ['search' => 'P']))->inertiaProps('departments'))->pluck('code');
         $this->assertSame(['PRODUCTION'], $names->all());
 
         $this->getJson(route('admin.departments.index', ['search' => 'coll', 'suggest' => 1]))

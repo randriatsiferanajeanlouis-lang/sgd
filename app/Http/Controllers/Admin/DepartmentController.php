@@ -17,12 +17,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class DepartmentController extends Controller
 {
     public function __construct(private readonly DepartmentService $departments) {}
 
-    public function index(Request $request): View|JsonResponse
+    public function index(Request $request): InertiaResponse|JsonResponse
     {
         Gate::authorize('viewAny', Department::class);
 
@@ -66,19 +68,53 @@ class DepartmentController extends Controller
             ]);
         }
 
-        return view('admin.departments.index', [
-            // Dossiers envoyés par l'utilisateur, par département destinataire (lecture seule).
-            'sentCounts' => $canManage ? collect() : DossierRecipient::query()
-                ->whereHas('dossier', fn (Builder $dossier) => $dossier->sentBy($request->user()))
-                ->selectRaw('department_id, COUNT(DISTINCT dossier_id) as total')
-                ->groupBy('department_id')
-                ->pluck('total', 'department_id'),
-            'departments' => $departments,
-            'cards' => $all,
+        $user = $request->user();
+        $manageUsers = $user->can('manage_users');
+        // Dossiers envoyés par l'utilisateur, par département destinataire (lecture seule).
+        $sentCounts = $canManage ? collect() : DossierRecipient::query()
+            ->whereHas('dossier', fn (Builder $dossier) => $dossier->sentBy($user))
+            ->selectRaw('department_id, COUNT(DISTINCT dossier_id) as total')
+            ->groupBy('department_id')
+            ->pluck('total', 'department_id');
+
+        return Inertia::render('Admin/Departments/Index', [
+            'title' => 'Départements',
+            'can' => ['create' => $canManage, 'manageUsers' => $manageUsers],
+            'search' => $term,
             'totals' => [
                 'users' => User::query()->count(),
                 'active' => User::query()->where('is_active', true)->count(),
                 'departments' => $all->where('is_active', true)->count(),
+            ],
+            'cards' => $all->map(fn (Department $department) => [
+                'id' => $department->id,
+                'name' => $department->name,
+                'code' => $department->code,
+                'active' => (bool) $department->is_active,
+                'usersCount' => $department->users_count,
+                'activeUsersCount' => $department->active_users_count,
+                'usersUrl' => route('admin.users.index', ['department' => $department->id]),
+            ])->values(),
+            'departments' => $departments->map(fn (Department $department) => [
+                'id' => $department->id,
+                'name' => $department->name,
+                'code' => $department->code,
+                'managerName' => $department->manager?->name,
+                'activeUsersCount' => $department->active_users_count,
+                'dossiersCount' => (int) $department->dossiers_count,
+                'sent' => (int) ($sentCounts[$department->id] ?? 0),
+                'sentUrl' => route('directory.dossiers', $department),
+                'usersUrl' => route('admin.users.index', ['department' => $department->id]),
+                'active' => (bool) $department->is_active,
+                'canUpdate' => $user->can('update', $department),
+                'editUrl' => route('admin.departments.edit', $department),
+                'toggleUrl' => route('admin.departments.toggle', $department),
+            ])->values(),
+            'urls' => [
+                'index' => route('admin.departments.index'),
+                'create' => route('admin.departments.create'),
+                'users' => route('admin.users.index'),
+                'activeUsers' => route('admin.users.index', ['status' => 'active']),
             ],
         ]);
     }

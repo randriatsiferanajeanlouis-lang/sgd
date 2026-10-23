@@ -244,12 +244,14 @@ class InterfaceTest extends TestCase
 
         $this->actingAs($hr)->get(route('dashboard'))->assertSee(route('admin.departments.index'));
 
+        // Lecture seule (« Lecture seule » et colonne « Mes envois » affichées par la page React quand can.create est faux).
         $this->actingAs($hr)->get(route('admin.departments.index'))
             ->assertOk()
-            ->assertSee('Lecture seule')
-            ->assertSee('Mes envois')
-            ->assertSee(route('directory.dossiers', $collecte), false)
-            ->assertDontSee(route('admin.departments.create'), false);
+            ->assertInertia(fn ($page) => $page->where('can.create', false)
+                ->where('departments', fn ($rows) => collect($rows)->firstWhere('code', 'COLLECTE')['sentUrl'] === route('directory.dossiers', $collecte)));
+        $page = (string) file_get_contents(resource_path('js/pages/Admin/Departments/Index.jsx'));
+        $this->assertStringContainsString('Lecture seule', $page);
+        $this->assertStringContainsString('<th>Mes envois</th>', $page);
 
         $this->getJson(route('admin.departments.index', ['search' => 'coll', 'suggest' => 1]))
             ->assertOk()
@@ -262,8 +264,8 @@ class InterfaceTest extends TestCase
     {
         $this->actingAs($this->user(Role::ADMIN, 'ADMINISTRATION'))->get(route('admin.departments.index'))
             ->assertOk()
-            ->assertSee('Ajout département')
-            ->assertSee(route('admin.departments.create'));
+            ->assertInertia(fn ($page) => $page->where('can.create', true)->where('urls.create', route('admin.departments.create')));
+        $this->assertStringContainsString('Ajout département', (string) file_get_contents(resource_path('js/pages/Admin/Departments/Index.jsx')));
 
         foreach ([Role::STAFF, Role::DEPARTMENT_HEAD] as $role) {
             $this->actingAs($this->user($role))->get(route('dashboard'))
