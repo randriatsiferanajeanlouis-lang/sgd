@@ -14,9 +14,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -119,11 +119,11 @@ class DepartmentController extends Controller
         ]);
     }
 
-    public function create(): View
+    public function create(): InertiaResponse
     {
         Gate::authorize('create', Department::class);
 
-        return view('admin.departments.form', ['department' => new Department, 'members' => collect()]);
+        return $this->form(new Department, collect());
     }
 
     public function store(SaveDepartmentRequest $request): RedirectResponse
@@ -136,13 +136,40 @@ class DepartmentController extends Controller
         return redirect()->route('admin.departments.index')->with('status', 'Le département a été créé.');
     }
 
-    public function edit(Department $department): View
+    public function edit(Department $department): InertiaResponse
     {
         Gate::authorize('update', $department);
 
-        return view('admin.departments.form', [
-            'department' => $department,
-            'members' => User::query()->active()->where('department_id', $department->id)->orderBy('last_name')->get(['id', 'name', 'job_title']),
+        return $this->form($department, User::query()->active()->where('department_id', $department->id)->orderBy('last_name')->get(['id', 'name', 'job_title']));
+    }
+
+    /**
+     * Formulaire React commun à la création et à la modification.
+     *
+     * @param  Collection<int, User>  $members  comptes actifs du département (choix du responsable)
+     */
+    private function form(Department $department, Collection $members): InertiaResponse
+    {
+        $editing = $department->exists;
+
+        return Inertia::render('Admin/Departments/Form', [
+            'title' => $editing ? 'Modifier un département' : 'Créer un département',
+            'department' => [
+                'id' => $department->id,
+                'name' => $department->name,
+                'code' => $department->code,
+                'email' => $department->email,
+                'description' => $department->description,
+                'manager_id' => $department->manager_id,
+            ],
+            'members' => $members->map(fn (User $member) => [
+                'value' => (string) $member->id,
+                'label' => $member->name.($member->job_title ? ' — '.$member->job_title : ''),
+            ])->values(),
+            'urls' => [
+                'save' => $editing ? route('admin.departments.update', $department) : route('admin.departments.store'),
+                'cancel' => route('admin.departments.index'),
+            ],
         ]);
     }
 

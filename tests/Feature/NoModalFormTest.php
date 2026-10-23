@@ -25,8 +25,6 @@ class NoModalFormTest extends TestCase
         $pages = [
             [$admin, route('admin.users.create'), 'Créer un utilisateur'],
             [$admin, route('admin.users.edit', $staff), $staff->name],
-            [$admin, route('admin.departments.create'), 'Créer un département'],
-            [$admin, route('admin.departments.edit', Department::query()->firstWhere('code', 'RSE')), 'Modifier le département'],
         ];
 
         foreach ($pages as [$user, $url, $title]) {
@@ -47,6 +45,11 @@ class NoModalFormTest extends TestCase
         $this->actingAs($staff)->get(route('dossiers.edit', $dossier))->assertOk()
             ->assertInertia(fn ($page) => $page->component('Dossiers/Edit'));
         $this->assertStringContainsString('<FormPage', (string) file_get_contents(resource_path('js/pages/Dossiers/Edit.jsx')));
+        $this->actingAs($admin)->get(route('admin.departments.create'))->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Admin/Departments/Form')->where('department.id', null));
+        $this->get(route('admin.departments.edit', Department::query()->firstWhere('code', 'RSE')))->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Admin/Departments/Form')->where('department.code', 'RSE'));
+        $this->assertStringContainsString('<FormPage', (string) file_get_contents(resource_path('js/pages/Admin/Departments/Form.jsx')));
         $this->assertStringContainsString("id = 'page-form'", (string) file_get_contents(resource_path('js/components/form/FormPage.jsx')));
 
         $this->assertFileDoesNotExist(resource_path('views/components/form/modal.blade.php'));
