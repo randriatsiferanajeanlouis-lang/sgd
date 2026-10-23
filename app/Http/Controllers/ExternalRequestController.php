@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\DossierOrigin;
+use App\Enums\DossierStatus;
 use App\Enums\ReceptionChannel;
 use App\Enums\RequestScope;
 use App\Http\Requests\StoreExternalRequest;
@@ -12,6 +13,7 @@ use App\Models\Dossier;
 use App\Models\RequestType;
 use App\Models\UrgencyLevel;
 use App\Services\ExternalRequestService;
+use App\Support\DossierListItem;
 use App\Support\Search;
 use App\Support\SubmissionGuard;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,6 +22,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 /**
  * Module RH : enregistrement des demandes externes, réponse officielle,
@@ -29,7 +33,7 @@ class ExternalRequestController extends Controller
 {
     public function __construct(private readonly ExternalRequestService $externalRequests) {}
 
-    public function index(Request $request): View|JsonResponse
+    public function index(Request $request): InertiaResponse|JsonResponse
     {
         abort_unless($request->user()->hasPermission('manage_external_requests'), 403);
 
@@ -53,8 +57,19 @@ class ExternalRequestController extends Controller
             ]);
         }
 
-        return view('external-requests.index', [
-            'dossiers' => $query->paginate(15)->withQueryString(),
+        $user = $request->user();
+
+        return Inertia::render('ExternalRequests/Index', [
+            'title' => 'Demandes externes',
+            'filters' => ['search' => $request->string('search')->toString(), 'status' => $request->string('status')->toString()],
+            'statuses' => collect(DossierStatus::cases())->map(fn (DossierStatus $status) => ['value' => $status->value, 'label' => $status->label()])->values(),
+            'dossiers' => $query->paginate(15)->withQueryString()
+                ->through(fn (Dossier $dossier) => DossierListItem::for($dossier, $user)),
+            'can' => ['create' => $user->can('createExternal', Dossier::class)],
+            'urls' => [
+                'index' => route('external-requests.index'),
+                'create' => route('external-requests.create'),
+            ],
         ]);
     }
 

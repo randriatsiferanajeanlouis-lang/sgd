@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
+import DossierFilters, { cleanParams } from '@/components/app/DossierFilters';
 import DossierTable from '@/components/app/DossierTable';
-import LiveSearch from '@/components/app/LiveSearch';
+import PageHeader from '@/components/app/PageHeader';
 import { cn } from '@/lib/utils';
 
 const BOXES = [
@@ -11,41 +11,20 @@ const BOXES = [
     ['all', 'Tous'],
 ];
 
-/** Paramètres d'adresse sans les valeurs vides (comme les liens Blade : array_filter). */
-const clean = (params) => Object.fromEntries(Object.entries(params).filter(([, value]) => value !== null && value !== undefined && value !== ''));
-
 /**
  * Mes dossiers (React) : totaux par département, boîtes Reçus / Envoyés /
  * Archivés / Tous, recherche instantanée, filtre de statut et tableau.
  * Les droits restent côté Laravel (DossierController@index, relatedTo).
  */
 export default function Index({ box, selectedDepartment, filters, statuses, grandTotal, departmentTotals, dossiers, urls }) {
-    const [search, setSearch] = useState(filters.search ?? '');
-    const [status, setStatus] = useState(filters.status ?? '');
-    // Champs alignés sur les filtres réellement appliqués (changement de boîte, de page…).
-    useEffect(() => {
-        setSearch(filters.search ?? '');
-        setStatus(filters.status ?? '');
-    }, [filters.search, filters.status]);
-
     const current = departmentTotals.find((row) => row.id === selectedDepartment);
-    const href = (params) => `${urls.index}?${new URLSearchParams(clean(params))}`;
-
-    const filter = (event) => {
-        event.preventDefault();
-        router.get(urls.index, clean({ box, department: selectedDepartment, search, status }), { preserveScroll: true });
-    };
+    const href = (params) => `${urls.index}?${new URLSearchParams(cleanParams(params))}`;
 
     return (
         <>
             <Head title="Mes dossiers" />
 
-            <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 border-b border-univ-line pb-5 dark:border-slate-800">
-                <div className="min-w-0">
-                    <h1 className="text-[22px] leading-tight font-extrabold tracking-[-0.025em] break-words text-univ-ink sm:text-[28px] dark:text-white">Mes dossiers</h1>
-                    <p className="mt-2 max-w-3xl text-sm leading-relaxed text-univ-muted dark:text-slate-400">Les dossiers que vous avez reçus ou envoyés, selon vos droits d’accès.</p>
-                </div>
-            </div>
+            <PageHeader title="Mes dossiers" subtitle="Les dossiers que vous avez reçus ou envoyés, selon vos droits d’accès." />
 
             {/* Synthèse : total général et total par département (un clic filtre la liste) */}
             <section className="mb-6" aria-label="Totaux des dossiers">
@@ -104,40 +83,7 @@ export default function Index({ box, selectedDepartment, filters, statuses, gran
                 ))}
             </nav>
 
-            <form onSubmit={filter} className="mb-4 flex flex-wrap items-end gap-3">
-                <div className="w-full sm:w-72">
-                    <LiveSearch
-                        label="Rechercher"
-                        placeholder="Référence, objet ou expéditeur"
-                        value={search}
-                        onChange={setSearch}
-                        suggestUrl={urls.index}
-                        params={{ box, department: selectedDepartment, status }}
-                    />
-                </div>
-                <div className="w-full sm:w-48">
-                    <label htmlFor="status" className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                        Statut du dossier
-                    </label>
-                    <select
-                        id="status"
-                        name="status"
-                        value={status}
-                        onChange={(event) => setStatus(event.target.value)}
-                        className="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 dark:border-slate-700 dark:bg-slate-900"
-                    >
-                        <option value="">Tous</option>
-                        {statuses.map((option) => (
-                            <option key={option.value} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <button type="submit" className="btn-secondary py-2.5">
-                    Filtrer
-                </button>
-            </form>
+            <DossierFilters url={urls.index} filters={filters} statuses={statuses} keep={{ box, department: selectedDepartment }} />
 
             <DossierTable dossiers={dossiers} />
         </>

@@ -107,6 +107,9 @@ class ViewButtonTest extends TestCase
         $this->actingAs($employee)->post(route('validations.store', $dossier->recipients()->sole()))->assertRedirect();
         $this->actingAs($head)->get(route('validations.index'))->assertOk()->assertSee('aria-label="Voir le dossier '.$dossier->reference.'"', false);
 
-        $this->actingAs($this->makeUser(Role::HR_MANAGER, 'RSE'))->get(route('external-requests.index'))->assertOk()->assertSee('Actions');
+        // Liste des demandes externes (React) : même tableau que « Mes dossiers », colonne Actions avec « Voir ».
+        $this->actingAs($this->makeUser(Role::HR_MANAGER, 'RSE'))->get(route('external-requests.index'))->assertOk()->assertInertia(fn ($page) => $page->component('ExternalRequests/Index'));
+        $this->assertStringContainsString('<DossierTable', (string) file_get_contents(resource_path('js/pages/ExternalRequests/Index.jsx')));
+        $this->assertStringContainsString('<th className="text-right">Actions</th>', (string) file_get_contents(resource_path('js/components/app/DossierTable.jsx')));
     }
 }

@@ -180,7 +180,8 @@ class ExternalRequestTest extends TestCase
     {
         $dossier = $this->registerStageRequest([$this->rseManager]);
 
-        $this->actingAs($this->hr)->get(route('external-requests.index', ['search' => 'Rakotobe']))->assertOk()->assertSee($dossier->reference);
+        $this->actingAs($this->hr)->get(route('external-requests.index', ['search' => 'Rakotobe']))->assertOk()
+            ->assertInertia(fn ($page) => $page->component('ExternalRequests/Index')->where('dossiers.data.0.reference', $dossier->reference));
         $this->actingAs($this->makeUser(Role::STAFF))->get(route('external-requests.index'))->assertForbidden();
     }
 
@@ -196,7 +197,7 @@ class ExternalRequestTest extends TestCase
             ->assertDontSee('id="modal-form"', false);
 
         // Le bouton « Nouvelle demande externe » mène à cette page.
-        $this->get(route('external-requests.index'))->assertSee(route('external-requests.create'));
+        $this->get(route('external-requests.index'))->assertInertia(fn ($page) => $page->where('can.create', true)->where('urls.create', route('external-requests.create')));
     }
 
     public function test_sponsoring_requires_every_field_including_the_organisation(): void
