@@ -23,7 +23,6 @@ class NoModalFormTest extends TestCase
         $dossier = $this->sendInternalRequest($staff, [$this->makeUser(Role::STAFF, 'TECHNIQUE')]);
 
         $pages = [
-            [$admin, route('admin.users.edit', $staff), $staff->name],
         ];
 
         foreach ($pages as [$user, $url, $title]) {
@@ -51,6 +50,9 @@ class NoModalFormTest extends TestCase
         $this->assertStringContainsString('<FormPage', (string) file_get_contents(resource_path('js/pages/Admin/Departments/Form.jsx')));
         $this->actingAs($admin)->get(route('admin.users.create'))->assertOk()->assertInertia(fn ($page) => $page->component('Admin/Users/Create'));
         $this->assertStringContainsString('<FormPage', (string) file_get_contents(resource_path('js/pages/Admin/Users/Create.jsx')));
+        $this->actingAs($admin)->get(route('admin.users.edit', $staff))->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Admin/Users/Edit')->where('user.name', $staff->name));
+        $this->assertStringContainsString('<FormPage', (string) file_get_contents(resource_path('js/pages/Admin/Users/Edit.jsx')));
         $this->assertStringContainsString("id = 'page-form'", (string) file_get_contents(resource_path('js/components/form/FormPage.jsx')));
 
         $this->assertFileDoesNotExist(resource_path('views/components/form/modal.blade.php'));

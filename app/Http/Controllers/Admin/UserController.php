@@ -17,7 +17,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -116,15 +115,55 @@ class UserController extends Controller
         return Inertia::location(route('admin.users.edit', $user));
     }
 
-    public function edit(User $user): View
+    public function edit(Request $request, User $user): InertiaResponse
     {
         Gate::authorize('update', $user);
 
-        return view('admin.users.edit', [
-            'user' => $user->load(['department', 'role', 'previousAccount']),
-            'roles' => Role::query()->orderBy('label')->get(['id', 'label']),
-            'departments' => Department::query()->active()->where('id', '!=', $user->department_id)->orderBy('sort_order')->get(['id', 'name']),
-            'auditLogs' => AuditLog::query()->with('actor')->whereMorphedTo('target', $user)->latest('id')->limit(20)->get(),
+        $user->load(['department', 'role', 'previousAccount']);
+        $viewer = $request->user();
+
+        return Inertia::render('Admin/Users/Edit', [
+            'title' => 'Modifier un utilisateur',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'username' => $user->username,
+                'department' => $user->department?->name,
+                'lastName' => $user->last_name,
+                'firstName' => $user->first_name,
+                'jobTitle' => $user->job_title,
+                'roleId' => $user->role_id,
+                'phone' => $user->phone,
+                'email' => $user->email,
+                'active' => (bool) $user->is_active,
+                'previousUsername' => $user->previousAccount?->username,
+            ],
+            'roles' => Role::query()->orderBy('label')->get(['id', 'label'])
+                ->map(fn (Role $role) => ['value' => (string) $role->id, 'label' => $role->label])->values(),
+            'departments' => Department::query()->active()->where('id', '!=', $user->department_id)->orderBy('sort_order')->get(['id', 'name'])
+                ->map(fn (Department $department) => ['value' => (string) $department->id, 'label' => $department->name])->values(),
+            'auditLogs' => AuditLog::query()->with('actor')->whereMorphedTo('target', $user)->latest('id')->limit(20)->get()
+                ->map(fn (AuditLog $log) => [
+                    'id' => $log->id,
+                    'action' => __('audit.'.$log->action),
+                    'comment' => $log->comment,
+                    'actor' => $log->actor?->name ?? 'Système',
+                    'date' => $log->created_at->format('d/m/Y H:i'),
+                ])->values(),
+            'can' => [
+                'deactivate' => $viewer->can('deactivate', $user),
+                'reactivate' => $viewer->can('reactivate', $user),
+                'resetPassword' => $viewer->can('resetPassword', $user),
+                'changeDepartment' => $viewer->can('changeDepartment', $user),
+            ],
+            'urls' => [
+                'update' => route('admin.users.update', $user),
+                'cancel' => route('admin.users.index'),
+                'deactivate' => route('users.deactivate', $user),
+                'reactivate' => route('admin.users.reactivate', $user),
+                'resetPassword' => route('admin.users.reset-password', $user),
+                'changeDepartment' => route('admin.users.change-department', $user),
+            ],
         ]);
     }
 

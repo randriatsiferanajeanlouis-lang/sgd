@@ -16,6 +16,8 @@ export default function FormPage({
     processing = false,
     hasErrors = false,
     onSubmit,
+    before = null,
+    after = null,
     children,
 }) {
     return (
@@ -36,6 +38,8 @@ export default function FormPage({
                 </h1>
                 {subtitle && <p className="mt-1.5 max-w-2xl text-sm text-univ-muted dark:text-slate-400">{subtitle}</p>}
             </div>
+
+            {before}
 
             <form id={id} onSubmit={onSubmit} aria-labelledby={`${id}-title`}>
                 {hasErrors && (
@@ -66,6 +70,9 @@ export default function FormPage({
                     </div>
                 </div>
             </form>
+
+            {/* Formulaires indépendants (actions sur un compte…), placés sous le formulaire principal. */}
+            {after && <div className="mt-8 space-y-5">{after}</div>}
         </div>
     );
 }
