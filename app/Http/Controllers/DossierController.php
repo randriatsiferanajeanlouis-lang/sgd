@@ -28,7 +28,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -264,16 +263,35 @@ class DossierController extends Controller
         return redirect()->route('dossiers.show', $dossier)->with('status', "Le dossier {$dossier->reference} a été envoyé.");
     }
 
-    public function edit(Dossier $dossier): View
+    public function edit(Dossier $dossier): InertiaResponse
     {
         Gate::authorize('update', $dossier);
 
         $scope = $dossier->isExternal() ? RequestScope::External : RequestScope::Internal;
+        $options = fn ($models) => $models->map(fn ($model) => ['value' => (string) $model->id, 'label' => $model->name])->values();
 
-        return view('dossiers.edit', [
-            'dossier' => $dossier,
-            'requestTypes' => RequestType::query()->active()->availableFor($scope)->orderBy('sort_order')->pluck('name', 'id'),
-            'urgencyLevels' => UrgencyLevel::query()->active()->orderBy('sort_order')->pluck('name', 'id'),
+        return Inertia::render('Dossiers/Edit', [
+            'title' => 'Modifier '.$dossier->reference,
+            'dossier' => [
+                'id' => $dossier->id,
+                'reference' => $dossier->reference,
+                'external' => $dossier->isExternal(),
+                'subject' => $dossier->subject,
+                'request_type_id' => $dossier->request_type_id,
+                'request_type_other' => $dossier->request_type_other,
+                'urgency_level_id' => $dossier->urgency_level_id,
+                'due_at' => $dossier->due_at?->toDateString(),
+                'dueLabel' => $dossier->due_at?->format('d/m/Y H:i'),
+                'description' => $dossier->description,
+            ],
+            'requestTypes' => $options(RequestType::query()->active()->availableFor($scope)->orderBy('sort_order')->get(['id', 'name'])),
+            'urgencyLevels' => $options(UrgencyLevel::query()->active()->orderBy('sort_order')->get(['id', 'name'])),
+            'otherTypeId' => RequestType::otherId(),
+            'today' => now()->toDateString(),
+            'urls' => [
+                'update' => route('dossiers.update', $dossier),
+                'cancel' => route('dossiers.show', $dossier),
+            ],
         ]);
     }
 

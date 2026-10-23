@@ -27,4 +27,14 @@ class StoreOfficialResponseRequest extends FormRequest
             'document' => ['nullable', ...DocumentStorage::uploadRules()],
         ];
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'sent_at.before_or_equal' => 'La date d’envoi ne peut pas être dans le futur.',
+        ];
+    }
 }

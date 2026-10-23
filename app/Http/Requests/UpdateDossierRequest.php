@@ -39,6 +39,9 @@ class UpdateDossierRequest extends FormRequest
      */
     public function messages(): array
     {
-        return $this->otherRequestTypeMessages();
+        return [
+            'due_at.after_or_equal' => 'La date d’échéance ne peut pas être passée.',
+            ...$this->otherRequestTypeMessages(),
+        ];
     }
 }
