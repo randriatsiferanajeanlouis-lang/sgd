@@ -107,7 +107,8 @@ class ViewButtonTest extends TestCase
         $dossier = $this->sendInternalRequest($this->makeUser(Role::STAFF, 'PRODUCTION'), [$employee]);
 
         $this->actingAs($employee)->post(route('validations.store', $dossier->recipients()->sole()))->assertRedirect();
-        $this->actingAs($head)->get(route('validations.index'))->assertOk()->assertSee('aria-label="Voir le dossier '.$dossier->reference.'"', false);
+        $this->actingAs($head)->get(route('validations.index'))->assertOk()->assertInertia(fn ($page) => $page->where('pending.0.dossier.url', route('dossiers.show', $dossier)));
+        $this->assertStringContainsString('aria-label={`Voir le dossier ${dossier.reference}`}', (string) file_get_contents(resource_path('js/pages/Validations/Index.jsx')));
 
         // Liste des demandes externes (React) : même tableau que « Mes dossiers », colonne Actions avec « Voir ».
         $this->actingAs($this->makeUser(Role::HR_MANAGER, 'RSE'))->get(route('external-requests.index'))->assertOk()->assertInertia(fn ($page) => $page->component('ExternalRequests/Index'));

@@ -56,7 +56,9 @@ class ValidationWorkflowTest extends TestCase
 
         $this->post(route('treatments.respond', $treatment), ['content' => 'Trop tôt'])->assertForbidden();
 
-        $this->actingAs($this->managerB)->get(route('validations.index'))->assertOk()->assertSee($dossier->reference)->assertSee('Montant supérieur à mon plafond.');
+        $this->actingAs($this->managerB)->get(route('validations.index'))->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Validations/Index')->where('pending.0.dossier.reference', $dossier->reference))
+            ->assertPropsSee('Montant supérieur à mon plafond.');
         $this->get(route('dossiers.show', $dossier))
             ->assertOk()
             ->assertPropsSee('Merci de traiter cette demande.', 'devis.pdf', 'Montant supérieur à mon plafond.')

@@ -6,11 +6,14 @@ use App\Enums\ValidationStatus;
 use App\Models\DossierRecipient;
 use App\Models\DossierValidation;
 use App\Services\ValidationService;
+use App\Support\Deadline;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class ValidationController extends Controller
 {
@@ -19,23 +22,46 @@ class ValidationController extends Controller
     /**
      * Demandes de validation adressées au responsable connecté.
      */
-    public function index(Request $request): View
+    public function index(Request $request): InertiaResponse
     {
         abort_unless($request->user()->hasPermission('validate_dossier'), 403);
 
-        return view('validations.index', [
+        $dossier = fn (DossierValidation $validation) => [
+            'reference' => $validation->dossier->reference,
+            'subject' => $validation->dossier->subject,
+            'url' => route('dossiers.show', $validation->dossier),
+        ];
+
+        return Inertia::render('Validations/Index', [
+            'title' => 'Validations',
             'pending' => DossierValidation::query()
                 ->with(['dossier.urgencyLevel', 'requester'])
                 ->where('validator_id', $request->user()->id)
                 ->where('status', ValidationStatus::Pending->value)
                 ->oldest()
-                ->get(),
+                ->get()
+                ->map(fn (DossierValidation $validation) => [
+                    'id' => $validation->id,
+                    'dossier' => $dossier($validation),
+                    'requester' => $validation->requester->name,
+                    'comment' => Str::limit((string) $validation->request_comment, 120),
+                    'urgency' => $validation->dossier->urgencyLevel?->name,
+                    'deadline' => Deadline::describe($validation->dossier->due_at)
+                        ?? ($validation->dossier->due_at ? ['label' => $validation->dossier->due_at->format('d/m/Y'), 'color' => null, 'overdue' => false] : null),
+                ]),
             'decided' => DossierValidation::query()
                 ->with(['dossier', 'requester'])
                 ->where('validator_id', $request->user()->id)
                 ->where('status', '!=', ValidationStatus::Pending->value)
                 ->latest('decided_at')
-                ->paginate(15),
+                ->paginate(15)
+                ->through(fn (DossierValidation $validation) => [
+                    'id' => $validation->id,
+                    'dossier' => $dossier($validation),
+                    'requester' => $validation->requester->name,
+                    'status' => ['label' => $validation->status->label(), 'color' => $validation->status->color()],
+                    'decidedAt' => $validation->decided_at->format('d/m/Y H:i'),
+                ]),
         ]);
     }
 
