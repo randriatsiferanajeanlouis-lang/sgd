@@ -67,10 +67,12 @@ class UserManagementTest extends TestCase
         $this->actingAs($this->admin())
             ->get(route('admin.users.index', ['status' => 'inactive']))
             ->assertOk()
-            ->assertSee('Rabe')
-            ->assertDontSee('Randria');
+            ->assertInertia(fn ($page) => $page->component('Admin/Users/Index')->where('filters.status', 'inactive'))
+            ->assertPropsSee('Rabe')
+            ->assertPropsDontSee('Randria');
 
-        $this->get(route('admin.users.index', ['search' => 'Randr']))->assertSee('Randria')->assertDontSee('Rabe');
+        $this->get(route('admin.users.index', ['search' => 'Randr']))->assertPropsSee('Randria')->assertPropsDontSee('Rabe');
+        $this->assertFalse(view()->exists('admin.users.index'));
     }
 
     public function test_admin_update_cannot_change_department(): void

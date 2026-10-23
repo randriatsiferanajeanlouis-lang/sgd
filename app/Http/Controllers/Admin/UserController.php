@@ -18,12 +18,14 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class UserController extends Controller
 {
     public function __construct(private readonly UserAccountService $accounts) {}
 
-    public function index(Request $request): View|JsonResponse
+    public function index(Request $request): InertiaResponse|JsonResponse
     {
         Gate::authorize('viewAny', User::class);
 
@@ -48,12 +50,42 @@ class UserController extends Controller
             ]);
         }
 
-        $users = $users->paginate(20)->withQueryString();
+        $viewer = $request->user();
 
-        return view('admin.users.index', [
-            'users' => $users,
-            'departments' => Department::query()->orderBy('sort_order')->get(['id', 'name']),
-            'roles' => Role::query()->orderBy('label')->get(['id', 'label']),
+        return Inertia::render('Admin/Users/Index', [
+            'title' => 'Utilisateurs',
+            'filters' => [
+                'search' => $request->string('search')->toString(),
+                'department' => $request->string('department')->toString(),
+                'role' => $request->string('role')->toString(),
+                'status' => $request->string('status')->toString(),
+            ],
+            'departments' => Department::query()->orderBy('sort_order')->get(['id', 'name'])
+                ->map(fn (Department $department) => ['value' => (string) $department->id, 'label' => $department->name])->values(),
+            'roles' => Role::query()->orderBy('label')->get(['id', 'label'])
+                ->map(fn (Role $role) => ['value' => (string) $role->id, 'label' => $role->label])->values(),
+            'users' => $users->paginate(20)->withQueryString()->through(fn (User $user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'lastName' => $user->last_name,
+                'firstName' => $user->first_name,
+                'username' => $user->username,
+                'department' => $user->department?->name,
+                'jobTitle' => $user->job_title,
+                'role' => $user->role->label,
+                'active' => (bool) $user->is_active,
+                'editUrl' => route('admin.users.edit', $user),
+                'canDeactivate' => $viewer->can('deactivate', $user),
+                'deactivateUrl' => route('users.deactivate', $user),
+                'canReactivate' => $viewer->can('reactivate', $user),
+                'reactivateUrl' => route('admin.users.reactivate', $user),
+                'canResetPassword' => $viewer->can('resetPassword', $user),
+                'resetPasswordUrl' => route('admin.users.reset-password', $user),
+            ]),
+            'urls' => [
+                'index' => route('admin.users.index'),
+                'create' => route('admin.users.create'),
+            ],
         ]);
     }
 

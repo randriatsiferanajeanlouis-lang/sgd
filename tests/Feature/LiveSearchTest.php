@@ -101,6 +101,8 @@ class LiveSearchTest extends TestCase
             ->assertOk()
             ->assertJsonFragment(['label' => 'Zéphyr Qwerty']);
 
-        $this->get(route('admin.users.index'))->assertOk()->assertSee('role="combobox"', false);
+        $this->get(route('admin.users.index'))->assertOk()->assertInertia(fn ($page) => $page->component('Admin/Users/Index'));
+        $this->assertStringContainsString('<LiveSearch', (string) file_get_contents(resource_path('js/pages/Admin/Users/Index.jsx')));
+        $this->assertStringContainsString('role="combobox"', (string) file_get_contents(resource_path('js/components/app/LiveSearch.jsx')));
     }
 }

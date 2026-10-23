@@ -56,6 +56,8 @@ class HandleInertiaRequests extends Middleware
                 'status' => fn () => $request->session()->get('status'),
                 'warning' => fn () => $request->session()->get('warning'),
                 'error' => fn () => $request->session()->get('error'),
+                // Mot de passe temporaire (réinitialisation, changement de département) : affiché une seule fois.
+                'temporaryPassword' => fn () => $request->session()->get('temporary_password'),
             ],
         ];
     }
