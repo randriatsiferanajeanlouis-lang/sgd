@@ -26,17 +26,21 @@ class DepartmentMembersPageTest extends TestCase
 
         $response = $this->actingAs($head)->get(route('department-members.index'))
             ->assertOk()
-            ->assertSee('Rabe Hery')
-            ->assertSee('Hery Rabe a 1 traitement(s) en retard')
-            ->assertDontSee('0349998877');
+            ->assertInertia(fn ($page) => $page->component('DepartmentMembers/Index')
+                ->where('attention.name', 'Hery Rabe')
+                ->where('attention.overdue', 1))
+            ->assertPropsSee('Rabe Hery')
+            ->assertPropsDontSee('0349998877');
+        $this->assertStringContainsString('{attention.name} a {attention.overdue} traitement(s) en retard', (string) file_get_contents(resource_path('js/pages/DepartmentMembers/Index.jsx')));
 
-        $summary = $response->viewData('summary');
+        $summary = $response->inertiaProps('summary');
         $this->assertSame(3, $summary['members']);
         $this->assertSame(2, $summary['active']);
         $this->assertSame(1, $summary['open']);
         $this->assertSame(1, $summary['overdue']);
 
-        $member = $response->viewData('members')->getCollection()->firstWhere('id', $late->id);
-        $this->assertSame(1, $member->overdue_count);
+        $member = collect($response->inertiaProps('members.data'))->firstWhere('id', $late->id);
+        $this->assertSame(1, $member['overdue']);
+        $this->assertFalse(view()->exists('department-members.index'));
     }
 }

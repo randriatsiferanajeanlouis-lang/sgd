@@ -7,9 +7,12 @@ use App\Models\DossierRecipient;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\View\View;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 /**
  * Vue Responsable : employés de son département, sans données personnelles
@@ -18,7 +21,7 @@ use Illuminate\View\View;
  */
 class DepartmentMemberController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): InertiaResponse
     {
         Gate::authorize('viewDepartmentMembers', User::class);
 
@@ -44,19 +47,54 @@ class DepartmentMemberController extends Controller
         $memberCounts = User::query()->where('department_id', $department?->id)
             ->selectRaw('COUNT(*) as total, SUM(is_active) as active')->first();
 
-        return view('department-members.index', [
-            'department' => $department,
-            'manager' => $department?->manager,
-            'members' => $members,
+        $viewer = $request->user();
+        $nextDue = (clone $treatments)->whereIn('status', $open)->where('due_at', '>=', now())->min('due_at');
+        $nextDue = $nextDue ? Carbon::parse($nextDue)->locale('fr') : null;
+        // Point d'attention : le membre actif (de la page) qui a le plus de traitements en retard.
+        $attention = $members->getCollection()->where('is_active', true)->sortByDesc('overdue_count')->first(fn (User $member) => $member->overdue_count > 0);
+
+        return Inertia::render('DepartmentMembers/Index', [
+            'title' => 'Employés',
+            'department' => [
+                'name' => $department?->name ?? 'Département',
+                'code' => $department?->code,
+                'initials' => mb_strtoupper(mb_substr($department?->name ?? '?', 0, 2)),
+            ],
+            'managerName' => $department?->manager?->name,
             'summary' => [
                 'members' => (int) $memberCounts->total,
                 'active' => (int) $memberCounts->active,
                 'open' => (clone $treatments)->whereIn('status', $open)->count(),
                 'overdue' => (clone $treatments)->whereIn('status', $open)->where('due_at', '<', now())->count(),
-                'next_due' => (clone $treatments)->whereIn('status', $open)->where('due_at', '>=', now())->min('due_at'),
-                'answer_rate' => $total > 0 ? (int) round($answered / $total * 100) : null,
-                'average_hours' => (clone $treatments)->whereNotNull('answered_at')
+                'answerRate' => $total > 0 ? (int) round($answered / $total * 100) : null,
+                'averageHours' => (clone $treatments)->whereNotNull('answered_at')
                     ->value(DB::raw('ROUND(AVG(TIMESTAMPDIFF(MINUTE, created_at, answered_at)) / 60, 1)')),
+            ],
+            'nextDue' => $nextDue ? [
+                'short' => $nextDue->isToday() ? 'Aujourd’hui '.$nextDue->format('H:i') : $nextDue->isoFormat('ddd D MMM, HH:mm'),
+                'long' => $nextDue->isoFormat('dddd D MMMM à HH:mm'),
+            ] : null,
+            'attention' => $attention ? ['name' => $attention->name, 'overdue' => $attention->overdue_count, 'open' => $attention->open_count] : null,
+            // Nom, prénom, fonction, rôle et charge de traitement : aucune donnée personnelle inutile.
+            'members' => $members->through(fn (User $member) => [
+                'id' => $member->id,
+                'name' => $member->name,
+                'displayName' => trim($member->last_name.' '.$member->first_name),
+                'jobTitle' => $member->job_title,
+                'role' => $member->role?->label,
+                'active' => (bool) $member->is_active,
+                'open' => $member->open_count,
+                'overdue' => $member->overdue_count,
+                'answered' => $member->answered_count,
+                'initials' => $member->initials(),
+                'photoUrl' => $member->photo_path ? route('users.photo', $member) : null,
+                'canDeactivate' => $viewer->can('deactivate', $member),
+                'deactivateUrl' => route('users.deactivate', $member),
+            ]),
+            'urls' => [
+                'dashboard' => route('dashboard'),
+                'statistics' => Route::has('statistics.index') && ($viewer->hasPermission('view_department_statistics') || $viewer->hasPermission('view_global_statistics'))
+                    ? route('statistics.index') : null,
             ],
         ]);
     }

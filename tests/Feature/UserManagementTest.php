@@ -145,9 +145,9 @@ class UserManagementTest extends TestCase
 
         $this->actingAs($head)->get(route('department-members.index'))
             ->assertOk()
-            ->assertSee('Rasoa')
-            ->assertDontSee('0341112233')
-            ->assertDontSee('Rabe');
+            ->assertPropsSee('Rasoa')
+            ->assertPropsDontSee('0341112233', 'Rabe')
+            ->assertInertia(fn ($page) => $page->where('members.data', fn ($members) => collect($members)->firstWhere('id', $employee->id)['canDeactivate'] === true));
 
         $this->post(route('users.deactivate', $employee), ['comment' => 'Départ de l’entreprise'])->assertRedirect();
         $this->assertFalse($employee->fresh()->is_active);
