@@ -35,6 +35,7 @@ export default function ChangePassword({ isMandatory, urls }) {
             <Head title="Mot de passe" />
 
             <FormPage
+                wide
                 title={isMandatory ? 'Remplacez votre mot de passe temporaire' : 'Changer mon mot de passe'}
                 cancelUrl={isMandatory ? null : urls.cancel}
                 processing={form.processing}
