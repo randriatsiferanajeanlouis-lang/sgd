@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 /**
  * Paramétrage : types de demandes, urgences, permissions des rôles,
@@ -24,19 +25,52 @@ use Illuminate\View\View;
  */
 class SettingsController extends Controller
 {
+    /** Noms des champs dans les messages d'erreur (« Ce nom est déjà utilisé. »). */
+    private const ATTRIBUTES = ['name' => 'nom', 'scope' => 'portée', 'response_delay_hours' => 'délai de réponse', 'value' => 'valeur'];
+
     public function __construct(private readonly AuditTrail $auditTrail) {}
 
-    public function index(Request $request): View
+    public function index(Request $request): InertiaResponse
     {
-        abort_unless($request->user()->hasPermission('manage_settings') || $request->user()->hasPermission('manage_permissions'), 403);
+        $user = $request->user();
+        abort_unless($user->hasPermission('manage_settings') || $user->hasPermission('manage_permissions'), 403);
 
-        return view('admin.settings.index', [
-            'requestTypes' => RequestType::query()->orderBy('sort_order')->get(),
-            'urgencyLevels' => UrgencyLevel::query()->orderBy('sort_order')->get(),
-            'roles' => Role::query()->with('permissions:id')->orderBy('id')->get(),
-            'permissionGroups' => Permission::query()->orderBy('id')->get()->groupBy('group'),
-            'settings' => Setting::query()->orderBy('group')->orderBy('key')->get(),
-            'scopes' => collect(RequestScope::cases())->mapWithKeys(fn (RequestScope $scope) => [$scope->value => $scope->label()]),
+        return Inertia::render('Admin/Settings/Index', [
+            'title' => 'Paramètres',
+            'initialTab' => $request->string('tab')->toString(),
+            'requestTypes' => RequestType::query()->orderBy('sort_order')->get()->map(fn (RequestType $type) => [
+                'id' => $type->id,
+                'name' => $type->name,
+                'scope' => $type->scope->value,
+                'requiresCompleteForm' => (bool) $type->requires_complete_form,
+                'isActive' => (bool) $type->is_active,
+                'updateUrl' => route('admin.settings.request-types.update', $type),
+            ])->values(),
+            'urgencyLevels' => UrgencyLevel::query()->orderBy('sort_order')->get()->map(fn (UrgencyLevel $level) => [
+                'id' => $level->id,
+                'name' => $level->name,
+                'responseDelayHours' => $level->response_delay_hours,
+                'isActive' => (bool) $level->is_active,
+                'updateUrl' => route('admin.settings.urgency-levels.update', $level),
+            ])->values(),
+            'settings' => Setting::query()->orderBy('group')->orderBy('key')->get()->map(fn (Setting $setting) => [
+                'id' => $setting->id,
+                'key' => $setting->key,
+                'label' => $setting->label,
+                'value' => $setting->value,
+                'updateUrl' => route('admin.settings.values.update', $setting),
+            ])->values(),
+            'scopes' => collect(RequestScope::cases())->map(fn (RequestScope $scope) => ['value' => $scope->value, 'label' => $scope->label()])->values(),
+            'can' => [
+                'manageRequestTypes' => $user->can('manage_request_types'),
+                'manageUrgencies' => $user->can('manage_urgencies'),
+                'managePermissions' => $user->can('manage_permissions'),
+                'manageSettings' => $user->can('manage_settings'),
+            ],
+            'urls' => [
+                'storeRequestType' => route('admin.settings.request-types.store'),
+                'roles' => route('admin.roles.index'),
+            ],
         ]);
     }
 
@@ -47,7 +81,7 @@ class SettingsController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:150', 'unique:request_types,name'],
             'scope' => ['required', Rule::enum(RequestScope::class)],
-        ]);
+        ], attributes: self::ATTRIBUTES);
 
         DB::transaction(function () use ($validated) {
             $type = RequestType::query()->create([
@@ -73,7 +107,7 @@ class SettingsController extends Controller
             'scope' => ['required', Rule::enum(RequestScope::class)],
             'requires_complete_form' => ['boolean'],
             'is_active' => ['boolean'],
-        ]);
+        ], attributes: self::ATTRIBUTES);
 
         DB::transaction(function () use ($request, $requestType, $validated) {
             $tracked = ['name', 'scope', 'requires_complete_form', 'is_active'];
@@ -96,7 +130,7 @@ class SettingsController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:100', Rule::unique('urgency_levels', 'name')->ignore($urgencyLevel)],
             'response_delay_hours' => ['required', 'integer', 'min:1', 'max:8760'],
-        ]);
+        ], attributes: self::ATTRIBUTES);
 
         DB::transaction(function () use ($request, $urgencyLevel, $validated) {
             $before = $urgencyLevel->only(['name', 'response_delay_hours', 'is_active']);

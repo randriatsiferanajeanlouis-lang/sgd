@@ -340,8 +340,11 @@ class InterfaceTest extends TestCase
         $this->actingAs($this->user(Role::DEPARTMENT_HEAD))->get(route('admin.settings.index'))->assertForbidden();
         $this->actingAs($this->user(Role::ADMIN, 'ADMINISTRATION'))->get(route('admin.settings.index'))
             ->assertOk()
-            ->assertSee('Très urgent')
-            ->assertSee(route('admin.roles.index'));
+            ->assertInertia(fn ($page) => $page->component('Admin/Settings/Index')
+                ->where('urls.roles', route('admin.roles.index'))
+                ->where('can.managePermissions', true))
+            ->assertPropsSee('Très urgent');
+        $this->assertFalse(view()->exists('admin.settings.index'));
 
         $this->get(route('admin.roles.index'))->assertOk()
             ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
