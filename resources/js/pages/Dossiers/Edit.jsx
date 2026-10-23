@@ -61,6 +61,7 @@ export default function Edit({ dossier, requestTypes, urgencyLevels, otherTypeId
             <Head title={`Modifier ${dossier.reference}`} />
 
             <FormPage
+                wide
                 title={`Modifier le dossier ${dossier.reference}`}
                 subtitle="Chaque modification est conservée dans l’historique (ancienne et nouvelle valeur) et les destinataires sont prévenus."
                 cancelUrl={urls.cancel}

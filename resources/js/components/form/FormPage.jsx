@@ -4,6 +4,7 @@ import { Check, ChevronLeft, Info } from 'lucide-react';
  * Formulaire affiché directement dans la page (même rendu que le composant
  * Blade <x-form.card>) : lien Retour, en-tête, bandeau d'erreurs, carte de
  * champs et barre d'actions toujours visible en bas de l'écran.
+ * `wide` : le formulaire occupe toute la largeur de la page.
  */
 export default function FormPage({
     id = 'page-form',
@@ -18,10 +19,11 @@ export default function FormPage({
     onSubmit,
     before = null,
     after = null,
+    wide = false,
     children,
 }) {
     return (
-        <div className="max-w-4xl">
+        <div className={wide ? 'w-full' : 'max-w-4xl'}>
             {cancelUrl && (
                 <nav className="mb-4 flex items-center gap-2 text-sm" aria-label="Fil d’Ariane">
                     <a href={cancelUrl} className="inline-flex items-center gap-1.5 font-semibold text-brand-500 hover:underline dark:text-brand-300">
