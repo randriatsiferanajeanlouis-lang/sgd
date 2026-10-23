@@ -4,14 +4,29 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Illuminate\Notifications\DatabaseNotification;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class NotificationController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): InertiaResponse
     {
-        return view('notifications.index', [
-            'notifications' => $request->user()->notifications()->paginate(20),
+        return Inertia::render('Notifications/Index', [
+            'title' => 'Notifications',
+            'hasUnread' => $request->user()->unreadNotifications()->exists(),
+            'notifications' => $request->user()->notifications()->paginate(20)
+                ->through(fn (DatabaseNotification $notification) => [
+                    'id' => $notification->id,
+                    'url' => route('notifications.open', $notification->id),
+                    'unread' => $notification->unread(),
+                    'message' => $notification->data['message'] ?? 'Notification',
+                    'reference' => $notification->data['reference'] ?? null,
+                    'type' => __('notifications.types.'.($notification->data['type'] ?? 'other')),
+                    'date' => $notification->created_at->format('d/m/Y H:i'),
+                ]),
+            'urls' => ['readAll' => route('notifications.read-all')],
         ]);
     }
 
@@ -32,10 +47,12 @@ class NotificationController extends Controller
         return $isInternalPath ? redirect($url) : redirect()->route('notifications.index');
     }
 
-    public function markAllAsRead(Request $request): RedirectResponse
+    public function markAllAsRead(Request $request): Response
     {
         $request->user()->unreadNotifications->markAsRead();
+        $request->session()->flash('status', 'Toutes les notifications ont été marquées comme lues.');
 
-        return back()->with('status', 'Toutes les notifications ont été marquées comme lues.');
+        // Rechargement complet : le compteur de la cloche (en-tête Blade) est remis à zéro.
+        return Inertia::location(route('notifications.index'));
     }
 }

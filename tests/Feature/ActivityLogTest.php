@@ -80,10 +80,12 @@ class ActivityLogTest extends TestCase
     {
         $staff = $this->makeUser(Role::STAFF, 'PRODUCTION');
 
+        // Page React : le message de session est transmis à React (props « flash ») et affiché en toast ;
+        // les toasts et la recherche rapide (îlots React) restent chargés dans la mise en page.
         $this->actingAs($staff)->withSession(['status' => 'Enregistré avec succès'])->get(route('notifications.index'))
-            ->assertSee('data-toast="success"', false)
-            ->assertSee('Enregistré avec succès')
+            ->assertInertia(fn (Assert $page) => $page->where('flash.status', 'Enregistré avec succès'))
             ->assertSee('id="react-islands"', false);
+        $this->assertStringContainsString("router.on('success', showFlash)", (string) file_get_contents(resource_path('js/inertia.jsx')));
 
         $labels = collect(Navigation::commands($staff))->flatMap(fn ($group) => array_column($group['items'], 'label'));
         $this->assertContains('Mon profil', $labels->all());
