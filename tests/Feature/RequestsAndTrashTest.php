@@ -90,8 +90,8 @@ class RequestsAndTrashTest extends TestCase
             $items = collect(\App\Support\Navigation::for($user)[0]['items'])->keyBy('label');
 
             // Menu latéral : « Demande » seul, sans sous-menu ni « Voir les dossiers ».
-            $this->assertSame('requests.index', $items['Demande']['route'], $role);
-            $this->assertSame([], $items['Demande']['children']);
+            $this->assertSame('requests.index', $items['Demandes']['route'], $role);
+            $this->assertSame([], $items['Demandes']['children']);
             $this->assertArrayNotHasKey('Voir les dossiers', $items->all());
             $this->assertArrayNotHasKey('Voir tous les dossiers', $items->all());
 
@@ -109,7 +109,7 @@ class RequestsAndTrashTest extends TestCase
         // Administrateur : ne crée pas de demande, garde un accès direct à la liste des dossiers.
         $admin = $this->makeUser(Role::ADMIN, 'ADMINISTRATION');
         $items = collect(\App\Support\Navigation::for($admin)[0]['items'])->keyBy('label');
-        $this->assertArrayNotHasKey('Demande', $items->all());
+        $this->assertArrayNotHasKey('Demandes',$items->all());
         $this->assertSame('dossiers.index', $items['Voir les dossiers']['route']);
         $this->actingAs($admin)->get(route('dossiers.create'))->assertForbidden();
 

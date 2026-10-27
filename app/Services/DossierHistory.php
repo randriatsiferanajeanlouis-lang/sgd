@@ -43,7 +43,9 @@ class DossierHistory
             'old_values' => $oldValues,
             'new_values' => $newValues,
             'comment' => $comment,
-            'properties' => $properties,
+            // Rôle de l'acteur au moment de l'action : la trace reste exacte
+            // même si son rôle change ensuite.
+            'properties' => $user?->role_id ? ['actor_role' => $user->role?->name, ...($properties ?? [])] : $properties,
             'ip_address' => $request?->ip(),
             'user_agent' => Str::limit((string) $request?->userAgent(), 250, ''),
         ]);

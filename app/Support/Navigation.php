@@ -27,7 +27,7 @@ class Navigation
                     // sont des boutons de cette page. Sans droit de créer (administrateur),
                     // « Voir les dossiers » reste une entrée du menu.
                     $user->can('createInternal', Dossier::class)
-                        ? self::item('Demande', 'requests.index', 'requests.index|dossiers.create|dossiers.index|external-requests.create', 'send')
+                        ? self::item('Demandes', 'requests.index', 'requests.index|dossiers.create|dossiers.index|external-requests.create', 'send')
                         : ($user->hasPermission('view_own_dossiers') ? self::item('Voir les dossiers', 'dossiers.index', 'dossiers.index', 'folder-open') : null),
                     $user->can('viewAnyHistory', Dossier::class) ? self::item('Historique', 'history.index', 'history.*', 'clock') : null,
                     self::item('Notifications', 'notifications.index', 'notifications.*', 'bell'),
