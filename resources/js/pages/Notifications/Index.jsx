@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import PageHeader from '@/components/app/PageHeader';
 import Pagination from '@/components/app/Pagination';
@@ -13,6 +13,15 @@ import { cn } from '@/lib/utils';
 export default function Index({ notifications, hasUnread, urls }) {
     const [marking, setMarking] = useState(false);
     const items = notifications.data ?? [];
+
+    // Nouvelle notification reçue en temps réel (WebSocket) : la liste se recharge seule.
+    useEffect(() => {
+        const refresh = () => router.reload({ only: ['notifications', 'hasUnread'] });
+
+        window.addEventListener('notification-received', refresh);
+
+        return () => window.removeEventListener('notification-received', refresh);
+    }, []);
 
     const markAll = () => {
         setMarking(true);

@@ -651,5 +651,26 @@ Alpine.data('navSection', (key) => ({
     },
 }));
 
+/**
+ * Cloche de notifications : compteur et liste complétés en temps réel par
+ * l'évènement « notification-received » (resources/js/realtime.js).
+ */
+Alpine.data('notificationBell', (unread = 0) => ({
+    open: false,
+    count: unread,
+    live: [],
+
+    get badge() {
+        return this.count > 99 ? '99+' : String(this.count);
+    },
+
+    init() {
+        window.addEventListener('notification-received', (event) => {
+            this.live = [event.detail, ...this.live.filter((item) => item.id !== event.detail.id)].slice(0, 5);
+            this.count += 1;
+        });
+    },
+}));
+
 window.Alpine = Alpine;
 Alpine.start();

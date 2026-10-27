@@ -115,30 +115,44 @@
 
                 <x-theme-toggle />
 
-                <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                <div class="relative" x-data="notificationBell({{ $unreadCount }})" @click.outside="open = false">
                     <button type="button" @click="open = !open" class="relative inline-flex size-9 items-center justify-center rounded-full text-slate-600 hover:bg-brand-50 hover:text-brand-600 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-brand-300"
                             aria-label="Notifications{{ $unreadCount ? ' ('.$unreadCount.' non lues)' : '' }}">
                         <x-icon name="bell" />
+                        {{-- Le compteur suit les nouvelles notifications reçues en temps réel (WebSocket). --}}
                         @if ($unreadCount)
-                            <span class="absolute -top-0.5 -right-0.5 min-w-5 rounded-full bg-rose-500 px-1 text-center text-[11px] leading-5 font-semibold text-white ring-2 ring-white dark:ring-slate-950" data-testid="unread-count">{{ $unreadCount > 99 ? '99+' : $unreadCount }}</span>
+                            <span x-text="badge" class="absolute -top-0.5 -right-0.5 min-w-5 rounded-full bg-rose-500 px-1 text-center text-[11px] leading-5 font-semibold text-white ring-2 ring-white dark:ring-slate-950" data-testid="unread-count">{{ $unreadCount > 99 ? '99+' : $unreadCount }}</span>
+                        @else
+                            <span x-show="count > 0" x-cloak x-text="badge" class="absolute -top-0.5 -right-0.5 min-w-5 rounded-full bg-rose-500 px-1 text-center text-[11px] leading-5 font-semibold text-white ring-2 ring-white dark:ring-slate-950"></span>
                         @endif
                     </button>
 
                     <div x-show="open" x-cloak x-transition class="fixed inset-x-4 top-16 z-30 overflow-hidden rounded-xl border border-univ-line bg-white shadow-xl sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:mt-2 sm:w-80 dark:border-slate-800 dark:bg-slate-900">
                         <div class="border-b border-univ-line px-4 py-2.5 text-sm font-semibold dark:border-slate-800">Notifications</div>
                         <ul class="max-h-80 divide-y divide-univ-line overflow-y-auto dark:divide-slate-800">
+                            <template x-for="item in live" :key="item.id">
+                                <li>
+                                    <a :href="item.url" class="flex gap-3 px-4 py-3 text-sm font-medium hover:bg-univ-surface dark:hover:bg-slate-800">
+                                        <span class="mt-1.5 size-2 shrink-0 rounded-full bg-brand-400" aria-hidden="true"></span>
+                                        <span>
+                                            <span x-text="item.message"></span>
+                                            <span class="mt-0.5 block text-xs font-normal text-slate-500 dark:text-slate-400">à l’instant</span>
+                                        </span>
+                                    </a>
+                                </li>
+                            </template>
                             @forelse ($currentUser->notifications()->limit(5)->get() as $notification)
                                 <li>
                                     <a href="{{ route('notifications.open', $notification->id) }}" @class(['flex gap-3 px-4 py-3 text-sm hover:bg-univ-surface dark:hover:bg-slate-800', 'font-medium' => $notification->unread()])>
                                         <span @class(['mt-1.5 size-2 shrink-0 rounded-full', 'bg-brand-400' => $notification->unread(), 'bg-transparent' => ! $notification->unread()]) aria-hidden="true"></span>
                                         <span>
-                                            {{ $notification->data['message'] ?? 'Notification' }}
+                                            {{ \App\Notifications\DossierNotification::displayMessage($notification->data) }}
                                             <span class="mt-0.5 block text-xs font-normal text-slate-500 dark:text-slate-400">{{ $notification->created_at->diffForHumans() }}</span>
                                         </span>
                                     </a>
                                 </li>
                             @empty
-                                <li class="px-4 py-6 text-center text-sm text-slate-500">Aucune notification.</li>
+                                <li x-show="live.length === 0" class="px-4 py-6 text-center text-sm text-slate-500">Aucune notification.</li>
                             @endforelse
                         </ul>
                         <a href="{{ route('notifications.index') }}" class="block border-t border-univ-line px-4 py-2.5 text-center text-sm font-medium text-brand-600 hover:bg-univ-surface dark:border-slate-800 dark:text-brand-300 dark:hover:bg-slate-800">Voir toutes les notifications</a>
@@ -187,6 +201,6 @@
 
     {{-- Toasts et recherche rapide (React, resources/js/islands.jsx) --}}
     <div id="react-islands"></div>
-    <script type="application/json" id="islands-data">@json(['commands' => \App\Support\Navigation::commands($currentUser)])</script>
+    <script type="application/json" id="islands-data">@json(['commands' => \App\Support\Navigation::commands($currentUser), 'userId' => $currentUser->id])</script>
 </body>
 </html>

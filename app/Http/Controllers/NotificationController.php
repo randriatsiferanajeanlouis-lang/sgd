@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Notifications\DossierNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\DatabaseNotification;
@@ -21,7 +22,7 @@ class NotificationController extends Controller
                     'id' => $notification->id,
                     'url' => route('notifications.open', $notification->id),
                     'unread' => $notification->unread(),
-                    'message' => $notification->data['message'] ?? 'Notification',
+                    'message' => DossierNotification::displayMessage($notification->data),
                     'reference' => $notification->data['reference'] ?? null,
                     'type' => __('notifications.types.'.($notification->data['type'] ?? 'other')),
                     'date' => $notification->created_at->format('d/m/Y H:i'),

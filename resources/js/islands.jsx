@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Toaster } from '@/components/ui/sonner';
 import { flashToToasts } from '@/lib/toasts';
+import { listenToNotifications } from '@/realtime';
 
 // Chargée seulement à la première ouverture (Ctrl K ou bouton de recherche).
 const CommandPalette = lazy(() => import('@/components/CommandPalette'));
@@ -63,7 +64,10 @@ function Islands({ data }) {
 const root = document.getElementById('react-islands');
 
 if (root) {
-    createRoot(root).render(<Islands data={readData()} />);
+    const data = readData();
+
+    createRoot(root).render(<Islands data={data} />);
+    listenToNotifications(data.userId);
     // Messages de session rendus par Blade (<x-flash>) : convertis en toasts.
     queueMicrotask(flashToToasts);
 }

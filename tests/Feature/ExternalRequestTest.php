@@ -131,6 +131,27 @@ class ExternalRequestTest extends TestCase
         );
     }
 
+    public function test_decision_notifications_show_a_check_or_a_cross(): void
+    {
+        $production = $this->makeUser(Role::DEPARTMENT_HEAD, 'PRODUCTION');
+        $dossier = $this->registerStageRequest([$this->rseManager, $production]);
+
+        $this->actingAs($this->rseManager)->post(route('treatments.respond', $dossier->recipients()->where('assigned_user_id', $this->rseManager->id)->sole()), [
+            'decision' => 'positive', 'content' => 'Favorable.',
+        ]);
+        $this->actingAs($production)->post(route('treatments.respond', $dossier->recipients()->where('assigned_user_id', $production->id)->sole()), [
+            'decision' => 'negative', 'content' => 'Pas de place.',
+        ]);
+
+        $messages = $this->hr->notifications()->get()->pluck('data')->map(fn ($data) => DossierNotification::displayMessage($data));
+        $this->assertCount(1, $messages->filter(fn ($m) => str_starts_with($m, '✅ ') && str_contains($m, 'Positive')));
+        $this->assertCount(1, $messages->filter(fn ($m) => str_starts_with($m, '❌ ') && str_contains($m, 'Négative')));
+
+        // Page « Notifications » et cloche de l'en-tête (visible sur toutes les pages).
+        $this->actingAs($this->hr)->get(route('notifications.index'))->assertInertia(fn ($page) => $page->where('notifications.data.0.message', fn ($m) => str_starts_with($m, '❌ ') || str_starts_with($m, '✅ ')));
+        $this->get(route('dashboard'))->assertSee('✅', false)->assertSee('❌', false);
+    }
+
     public function test_diverging_decisions_are_all_kept(): void
     {
         $production = $this->makeUser(Role::DEPARTMENT_HEAD, 'PRODUCTION');
