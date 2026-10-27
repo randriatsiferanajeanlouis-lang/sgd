@@ -11,6 +11,7 @@ export default function Dossiers({ department, dossiers, urls }) {
         <>
             <Head title={`Dossiers envoyés — ${department.name}`} />
 
+            <div className="list-page">
             <PageHeader
                 title={`Dossiers envoyés à ${department.name}`}
                 subtitle="Tous les dossiers que vous avez transmis à ce département."
@@ -22,6 +23,7 @@ export default function Dossiers({ department, dossiers, urls }) {
             />
 
             <DossierTable dossiers={dossiers} />
+            </div>
         </>
     );
 }

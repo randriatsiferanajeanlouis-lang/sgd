@@ -87,7 +87,7 @@ export default function Create({ departments, roles, urls }) {
                 </div>
 
                 <FormSection title="Poste" Icon={Building2} hasErrors={has('department_id', 'job_title', 'role_id')}>
-                    <div className="grid gap-5 sm:grid-cols-2">
+                    <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
                         <SelectField name="department_id" label="Département" required options={departments} value={data.department_id} onChange={set('department_id')} error={errors.department_id} />
                         <Field name="job_title" label="Fonction" required value={data.job_title} onChange={set('job_title')} error={errors.job_title} />
                         <SelectField name="role_id" label="Rôle" required options={roles} value={data.role_id} onChange={set('role_id')} error={errors.role_id} />
@@ -95,8 +95,8 @@ export default function Create({ departments, roles, urls }) {
                 </FormSection>
 
                 <FormSection title="Connexion" Icon={KeyRound} hasErrors={has('username', 'password', 'password_confirmation', 'is_active')}>
-                    <Field name="username" label="Nom d’utilisateur" required autoComplete="off" hint="Minuscules, chiffres, . _ -" value={data.username} onChange={set('username')} error={errors.username} />
-                    <div className="grid gap-5 sm:grid-cols-2">
+                    <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                        <Field name="username" label="Nom d’utilisateur" required autoComplete="off" hint="Minuscules, chiffres, . _ -" value={data.username} onChange={set('username')} error={errors.username} />
                         <Field
                             name="password"
                             label="Mot de passe"

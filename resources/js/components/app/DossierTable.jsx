@@ -13,7 +13,7 @@ export default function DossierTable({ dossiers, actions = true }) {
 
     return (
         <>
-            <div className="card overflow-x-auto p-0">
+            <div className="card list-scroll p-0">
                 <table className="data-table">
                     <thead>
                         <tr>
@@ -60,6 +60,12 @@ export default function DossierTable({ dossiers, actions = true }) {
                                 <td data-label="Statut">
                                     <StatusBadge color={dossier.status.color}>{dossier.status.label}</StatusBadge>
                                     {dossier.status.mine && <div className="mt-0.5 text-xs text-slate-500">mon traitement</div>}
+                                    {dossier.removal && (
+                                        <div className="mt-1">
+                                            <StatusBadge color={dossier.removal.state === 'purged' ? 'red' : 'amber'}>{dossier.removal.label}</StatusBadge>
+                                            <div className="text-xs text-slate-500 dark:text-slate-400">le {dossier.removal.at}</div>
+                                        </div>
+                                    )}
                                 </td>
                                 <td data-label="Échéance" className="whitespace-nowrap">
                                     {dossier.deadline &&

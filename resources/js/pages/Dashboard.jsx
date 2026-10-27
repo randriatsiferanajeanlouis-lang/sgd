@@ -27,7 +27,7 @@ export default function Dashboard({ user, isAdmin, stats, personalTrends, trends
                 subtitle={`${user.department ? `${user.department} · ` : ''}${user.role} — voici un aperçu de vos dossiers.`}
             />
 
-            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Chiffres clés">
+            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Chiffres clés">
                 {stats.map((stat) => (
                     <StatCard key={stat.key} stat={stat} tone={stat.key === 'overdue' ? 'rose' : 'cyan'} />
                 ))}

@@ -133,6 +133,7 @@ class DossierController extends Controller
             'urls' => [
                 'index' => route('requests.index'),
                 'create' => route('dossiers.create'),
+                'createExternal' => $request->user()->can('createExternal', Dossier::class) ? route('external-requests.create') : null,
                 'dossiers' => $request->user()->hasPermission('view_own_dossiers') ? route('dossiers.index') : null,
                 'export' => route('requests.export'),
             ],

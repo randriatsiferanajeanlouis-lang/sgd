@@ -29,6 +29,7 @@ export default function Trash({ title, dossiers, requestsUrl }) {
         <>
             <Head title={title} />
 
+            <div className="list-page">
             <PageHeader
                 title="Corbeille"
                 kicker="Demande"
@@ -36,7 +37,7 @@ export default function Trash({ title, dossiers, requestsUrl }) {
                 actions={<a href={requestsUrl} className="btn-secondary">Retour aux demandes</a>}
             />
 
-            <div className="card overflow-x-auto p-0">
+            <div className="card list-scroll p-0">
                 <table className="data-table">
                     <thead>
                         <tr>
@@ -110,6 +111,7 @@ export default function Trash({ title, dossiers, requestsUrl }) {
                     )}
                 </nav>
             )}
+            </div>
         </>
     );
 }

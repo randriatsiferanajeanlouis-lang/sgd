@@ -1,6 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, ArrowUpDown, Eye, FileSpreadsheet, FolderOpen, Inbox, Paperclip, Plus, Search, Settings2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Eye, FileSpreadsheet, FolderOpen, Inbox, Mail, Paperclip, Plus, Search, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -48,7 +48,7 @@ function readColumns() {
 
 /**
  * « Demande » : liste des demandes envoyées, présentée comme une liste de
- * documents (titre et compteur, « Nouvelle demande », « Voir les dossiers », réglages, export, tri,
+ * documents (titre et compteur, « Demande interne », « Demande externe », « Voir les dossiers », réglages, export, tri,
  * regroupement par statut). Données : DossierController@requests.
  */
 export default function RequestsIndex({ dossiers, counts, statuses, filters, urls }) {
@@ -112,7 +112,7 @@ export default function RequestsIndex({ dossiers, counts, statuses, filters, url
         <>
             <Head title="Mes demandes" />
 
-            <div className="overflow-hidden rounded-xl border bg-card text-card-foreground shadow-xs">
+            <div className="list-page overflow-hidden rounded-xl border bg-card text-card-foreground shadow-xs">
                 {/* En-tête : titre + compteur, barre d'actions à droite */}
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 sm:px-5">
                     <div className="min-w-0">
@@ -124,8 +124,13 @@ export default function RequestsIndex({ dossiers, counts, statuses, filters, url
 
                     <div className="flex flex-wrap items-center gap-1.5">
                         <Button asChild size="sm">
-                            <a href={urls.create}><Plus /> Nouvelle demande</a>
+                            <a href={urls.create}><Plus /> Demande interne</a>
                         </Button>
+                        {urls.createExternal && (
+                            <Button asChild variant="outline" size="sm">
+                                <a href={urls.createExternal}><Mail /> Demande externe</a>
+                            </Button>
+                        )}
                         {urls.dossiers && (
                             <Button asChild variant="outline" size="sm">
                                 <a href={urls.dossiers}><FolderOpen /> Voir les dossiers</a>
@@ -173,6 +178,7 @@ export default function RequestsIndex({ dossiers, counts, statuses, filters, url
                     </Select>
                 </div>
 
+                <div className="list-scroll">
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -277,6 +283,7 @@ export default function RequestsIndex({ dossiers, counts, statuses, filters, url
                         ))}
                     </TableBody>
                 </Table>
+                </div>
 
                 {dossiers.last_page > 1 && (
                     <nav className="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-3 sm:px-5" aria-label="Pagination">

@@ -25,6 +25,7 @@ export default function Index({ search: appliedSearch, logs, urls }) {
         <>
             <Head title="Historique" />
 
+            <div className="list-page">
             <PageHeader
                 title="Historique"
                 kicker="Traçabilité"
@@ -56,7 +57,7 @@ export default function Index({ search: appliedSearch, logs, urls }) {
                 )}
             </form>
 
-            <div className="card overflow-x-auto p-0">
+            <div className="card list-scroll p-0">
                 <table className="data-table">
                     <thead>
                         <tr>
@@ -117,6 +118,7 @@ export default function Index({ search: appliedSearch, logs, urls }) {
 
             <div className="mt-4">
                 <Pagination paginator={logs} />
+            </div>
             </div>
         </>
     );

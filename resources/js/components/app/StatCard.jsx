@@ -21,17 +21,17 @@ export default function StatCard({ stat, tone = 'cyan' }) {
     return (
         <a
             href={stat.url}
-            className="group relative flex flex-col gap-3 overflow-hidden rounded-xl border bg-card p-5 text-card-foreground shadow-xs transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg"
+            className="group relative flex flex-col gap-2 overflow-hidden rounded-xl border bg-card p-3.5 text-card-foreground shadow-xs transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg"
         >
-            <div className="flex items-center gap-3">
-                <span className={cn('grid size-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-white shadow-lg', colors.tile)}>
-                    <AppIcon name={stat.icon} className="size-5" />
+            <div className="flex items-center gap-2.5">
+                <span className={cn('grid size-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br text-white shadow-md', colors.tile)}>
+                    <AppIcon name={stat.icon} className="size-4" />
                 </span>
                 <p className="min-w-0 truncate text-sm font-semibold">{stat.label}</p>
             </div>
             <div className="flex items-end justify-between gap-3">
-                <p className="text-3xl leading-none font-extrabold tracking-tight tabular-nums">{stat.value}</p>
-                <ChartContainer config={config} className="aspect-auto h-11 w-28 shrink-0" aria-hidden="true">
+                <p className="text-2xl leading-none font-extrabold tracking-tight tabular-nums">{stat.value}</p>
+                <ChartContainer config={config} className="aspect-auto h-8 w-24 shrink-0" aria-hidden="true">
                     <AreaChart data={stat.spark} margin={{ top: 4, right: 2, bottom: 2, left: 2 }} accessibilityLayer={false}>
                         <defs>
                             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">

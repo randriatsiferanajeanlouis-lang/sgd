@@ -15,13 +15,14 @@ export default function Index({ filters, statuses, dossiers, can, urls }) {
         <>
             <Head title="Demandes externes" />
 
+            <div className="list-page">
             <PageHeader
                 title="Demandes externes"
                 subtitle="Toutes les demandes extérieures, enregistrées par le RH."
                 actions={
                     can.create && (
                         <a href={urls.create} className="btn-primary">
-                            <Plus className="size-4" aria-hidden="true" /> Nouvelle demande externe
+                            <Plus className="size-4" aria-hidden="true" /> Demande externe
                         </a>
                     )
                 }
@@ -30,6 +31,7 @@ export default function Index({ filters, statuses, dossiers, can, urls }) {
             <DossierFilters url={urls.index} filters={filters} statuses={statuses} />
 
             <DossierTable dossiers={dossiers} />
+            </div>
         </>
     );
 }

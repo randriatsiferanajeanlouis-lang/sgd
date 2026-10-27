@@ -83,9 +83,11 @@ export default function Index({ box, selectedDepartment, filters, statuses, gran
                 ))}
             </nav>
 
+            <div className="list-page">
             <DossierFilters url={urls.index} filters={filters} statuses={statuses} keep={{ box, department: selectedDepartment }} />
 
             <DossierTable dossiers={dossiers} />
+            </div>
         </>
     );
 }

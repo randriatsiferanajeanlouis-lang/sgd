@@ -199,12 +199,9 @@ function EditAccount({ user, roles, departments, auditLogs, can, urls }) {
                     )}
                 </div>
 
-                <div className="grid gap-5 sm:grid-cols-2">
+                <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
                     <Field name="last_name" label="Nom" required value={data.last_name} onChange={set('last_name')} error={errors.last_name} />
                     <Field name="first_name" label="Prénom" required value={data.first_name} onChange={set('first_name')} error={errors.first_name} />
-                </div>
-
-                <div className="grid gap-5 sm:grid-cols-2">
                     <Field name="job_title" label="Fonction" required value={data.job_title} onChange={set('job_title')} error={errors.job_title} />
                     <SelectField name="role_id" label="Rôle" required options={roles} value={data.role_id} onChange={set('role_id')} error={errors.role_id} />
                 </div>

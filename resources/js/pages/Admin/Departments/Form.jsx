@@ -37,9 +37,8 @@ export default function Form({ department, members, urls }) {
                 hasErrors={form.hasErrors}
                 onSubmit={submit}
             >
-                <Field name="name" label="Nom" required value={data.name} onChange={(value) => form.setData('name', value)} error={errors.name} />
-
-                <div className="grid gap-5 sm:grid-cols-2">
+                <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                    <Field name="name" label="Nom" required value={data.name} onChange={(value) => form.setData('name', value)} error={errors.name} />
                     <Field name="code" label="Code" required hint="Identifiant court, ex. PRODUCTION" value={data.code} onChange={(value) => form.setData('code', value)} error={errors.code} />
                     <Field name="email" label="E-mail du département" type="email" value={data.email} onChange={(value) => form.setData('email', value)} error={errors.email} />
                 </div>
