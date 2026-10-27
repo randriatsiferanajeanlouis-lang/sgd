@@ -38,7 +38,7 @@ export default function Responses({ responses }) {
                         </div>
 
                         <div className="px-4 py-4">
-                            <div className="leading-relaxed whitespace-pre-line">{response.content}</div>
+                            {response.content && <div className="leading-relaxed whitespace-pre-line">{response.content}</div>}
 
                             {(response.justification || response.recommendation) && (
                                 <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">

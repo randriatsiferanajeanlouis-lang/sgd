@@ -140,9 +140,17 @@ function Respond({ treatment, external }) {
 
     const submit = (event) => {
         event.preventDefault();
+
+        // Demande interne : au moins un choix Positive / Négative ou un texte (le serveur revérifie).
+        if (!external && !form.data.decision && form.data.content.trim() === '') {
+            form.setError({ content: 'Choisissez Positive ou Négative, ou écrivez une réponse.' });
+
+            return;
+        }
+
         form.transform((data) => {
-            const payload = { content: data.content, attachments: data.attachments };
-            return external ? { ...payload, decision: data.decision, justification: data.justification, recommendation: data.recommendation } : payload;
+            const payload = { content: data.content, decision: data.decision, attachments: data.attachments };
+            return external ? { ...payload, justification: data.justification, recommendation: data.recommendation } : payload;
         });
         form.post(treatment.urls.respond, {
             forceFormData: true,
@@ -156,22 +164,26 @@ function Respond({ treatment, external }) {
 
     return (
         <form onSubmit={submit} className="mt-4 space-y-4">
-            {external && (
-                <fieldset>
-                    <legend className="mb-2 text-sm font-medium">Décision</legend>
-                    <div className="flex gap-4">
-                        {treatment.decisions.map((decision) => (
-                            <label key={decision.value} className="flex items-center gap-2">
-                                <input type="radio" name="decision" value={decision.value} checked={form.data.decision === decision.value} onChange={() => form.setData('decision', decision.value)} required />
-                                {decision.label}
-                            </label>
-                        ))}
-                    </div>
-                    {form.errors.decision && <p className="mt-1.5 text-sm text-red-600 dark:text-red-400">{form.errors.decision}</p>}
-                </fieldset>
-            )}
+            {/* Décision positive ✅ / négative ❌ : reprise dans la notification de l'expéditeur. */}
+            <fieldset>
+                <legend className="mb-2 text-sm font-medium">{external ? 'Décision' : 'Sens de la réponse (facultatif si vous écrivez une réponse)'}</legend>
+                <div className="flex gap-4">
+                    {treatment.decisions.map((decision) => (
+                        <label key={decision.value} className="flex items-center gap-2">
+                            <input type="radio" name="decision" value={decision.value} checked={form.data.decision === decision.value} onChange={() => { form.setData('decision', decision.value); form.clearErrors('content', 'decision'); }} required={external} />
+                            {decision.value === 'positive' ? '✅' : '❌'} {decision.label}
+                        </label>
+                    ))}
+                    {!external && form.data.decision && (
+                        <button type="button" className="text-xs text-slate-500 underline hover:text-slate-700 dark:text-slate-400" onClick={() => form.setData('decision', '')}>
+                            Effacer le choix
+                        </button>
+                    )}
+                </div>
+                {form.errors.decision && <p className="mt-1.5 text-sm text-red-600 dark:text-red-400">{form.errors.decision}</p>}
+            </fieldset>
 
-            <TextareaField id="content" name="content" label={external ? 'Commentaire' : 'Réponse'} rows={5} required value={form.data.content} onChange={(value) => form.setData('content', value)} error={form.errors.content} />
+            <TextareaField id="content" name="content" label={external ? 'Commentaire' : 'Réponse (facultative si vous choisissez Positive ou Négative)'} rows={5} required={external} value={form.data.content} onChange={(value) => { form.setData('content', value); if (value.trim()) form.clearErrors('content', 'decision'); }} error={form.errors.content} />
 
             {external && (
                 <div className="grid gap-4 sm:grid-cols-2">

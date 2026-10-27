@@ -48,7 +48,7 @@ class TreatmentService
     }
 
     /**
-     * @param  array{content: string, decision?: string|null, justification?: string|null, recommendation?: string|null}  $data
+     * @param  array{content?: string|null, decision?: string|null, justification?: string|null, recommendation?: string|null}  $data
      * @param  list<UploadedFile>  $attachments
      */
     public function respond(DossierRecipient $recipient, User $author, array $data, array $attachments = []): Response
@@ -66,7 +66,7 @@ class TreatmentService
                 'department_id' => $author->department_id,
                 'author_id' => $author->id,
                 'type' => ResponseType::Answer,
-                'content' => $data['content'],
+                'content' => $data['content'] ?? null,
                 'decision' => $data['decision'] ?? null,
                 'justification' => $data['justification'] ?? null,
                 'recommendation' => $data['recommendation'] ?? null,
@@ -82,7 +82,7 @@ class TreatmentService
                     'statut' => RecipientStatus::Answered->label(),
                     'décision' => $response->decision?->label(),
                 ]),
-                $data['content'],
+                $data['content'] ?? null,
             );
 
             if ($dossier->isExternal()) {
@@ -98,6 +98,7 @@ class TreatmentService
                     ? "{$author->name} a rendu une décision {$response->decision->label()} sur le dossier {$dossier->reference}."
                     : "{$author->name} a répondu au dossier {$dossier->reference}.",
                 $dossier,
+                $response->decision,
             );
 
             return $response;

@@ -46,6 +46,7 @@ final class DossierPage
                 'subject' => $dossier->subject,
                 'description' => $dossier->description,
                 'external' => $dossier->isExternal(),
+                'removal' => $viewer->hasPermission('view_all_dossiers') ? $dossier->senderRemoval() : null,
                 'status' => self::badge($dossier->status),
                 'type' => $dossier->typeLabel(),
                 'urgency' => $dossier->urgencyLevel ? ['name' => $dossier->urgencyLevel->name, 'color' => $dossier->urgencyLevel->color ?? '#94a3b8'] : null,
@@ -168,9 +169,8 @@ final class DossierPage
             'canForward' => $viewer->can('forward', $recipient),
             'forwardTargets' => $forwardTargets->map(fn ($label, $id) => ['value' => (string) $id, 'label' => $label])->values(),
             'canRespond' => $viewer->can('respond', $recipient),
-            'decisions' => $dossier->isExternal()
-                ? collect(ResponseDecision::cases())->map(fn (ResponseDecision $decision) => ['value' => $decision->value, 'label' => $decision->label()])->values()
-                : [],
+            // Positive / négative pour toute réponse (interne comme externe) : la notification de l'expéditeur la reprend en ✅ / ❌.
+            'decisions' => collect(ResponseDecision::cases())->map(fn (ResponseDecision $decision) => ['value' => $decision->value, 'label' => $decision->label()])->values(),
             'canArchive' => $viewer->can('archive', $recipient),
             'urls' => [
                 'validation' => route('validations.store', $recipient),
