@@ -1,5 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { RotateCcw, Trash2 } from 'lucide-react';
+import ConfirmDialog from '@/components/app/ConfirmDialog';
 import Icon from '../../components/Icon';
 import PageHeader from '../../components/PageHeader';
 import { paginationLabel, shortText } from '@/lib/text';
@@ -9,21 +11,53 @@ import { paginationLabel, shortText } from '@/lib/text';
  * DossierTrashController@index ; « Restaurer » et « Supprimer définitivement »
  * repassent par les routes Laravel, qui vérifient les autorisations.
  */
-export default function Trash({ title, dossiers, requestsUrl }) {
+export default function Trash({ title, dossiers, requestsUrl, bulkUrls }) {
     const [busy, setBusy] = useState(null);
+    // Confirmation en attente : { kind: 'restore' | 'destroy', items: dossiers }.
+    const [pending, setPending] = useState(null);
+    const [selected, setSelected] = useState([]);
+    const rows = dossiers.data;
+    const allChecked = rows.length > 0 && rows.every((row) => selected.includes(row.id));
 
-    const send = (dossier, method, url, question) => {
-        if (!window.confirm(question)) {
-            return;
-        }
+    // La liste est rechargée par le serveur après chaque opération : on ne garde que les lignes encore affichées.
+    useEffect(() => setSelected((ids) => ids.filter((id) => rows.some((row) => row.id === id))), [rows]);
 
-        router.visit(url, {
-            method,
+    const toggle = (id, checked) => setSelected((ids) => (checked ? [...ids, id] : ids.filter((item) => item !== id)));
+
+    const confirm = () => {
+        const { kind, items } = pending;
+        const options = {
             preserveScroll: true,
-            onStart: () => setBusy(dossier.id),
+            onStart: () => setBusy(true),
             onFinish: () => setBusy(null),
-        });
+            onSuccess: () => {
+                setPending(null);
+                setSelected([]);
+            },
+        };
+
+        if (items.length === 1) {
+            router.visit(kind === 'restore' ? items[0].restore_url : items[0].destroy_url, { method: kind === 'restore' ? 'post' : 'delete', ...options });
+        } else {
+            router.visit(bulkUrls[kind], { method: kind === 'restore' ? 'post' : 'delete', data: { ids: items.map((item) => item.id) }, ...options });
+        }
     };
+
+    const many = pending?.items.length > 1;
+    const wording = {
+        restore: {
+            title: many ? `Restaurer ${pending?.items.length} dossiers` : 'Restaurer le dossier',
+            question: many ? `Restaurer ces ${pending?.items.length} dossiers dans vos demandes ?` : `Restaurer le dossier ${pending?.items[0].reference} dans vos demandes ?`,
+            label: 'Restaurer',
+        },
+        destroy: {
+            title: many ? `Supprimer définitivement ${pending?.items.length} dossiers` : 'Supprimer définitivement le dossier',
+            question: many
+                ? `Supprimer définitivement ces ${pending?.items.length} dossiers de votre espace ? Cette action est irréversible : ils ne pourront plus être restaurés. Les destinataires les conservent.`
+                : `Supprimer définitivement le dossier ${pending?.items[0].reference} de votre espace ? Cette action est irréversible : il ne pourra plus être restauré. Les destinataires le conservent.`,
+            label: 'Supprimer définitivement',
+        },
+    }[pending?.kind ?? 'restore'];
 
     return (
         <>
@@ -37,10 +71,27 @@ export default function Trash({ title, dossiers, requestsUrl }) {
                 actions={<a href={requestsUrl} className="btn-secondary">Retour aux demandes</a>}
             />
 
+            {selected.length > 0 && (
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm dark:border-slate-700 dark:bg-slate-800" role="status">
+                    <span>{selected.length} dossier{selected.length > 1 ? 's' : ''} sélectionné{selected.length > 1 ? 's' : ''}</span>
+                    <div className="flex flex-wrap gap-2">
+                        <button type="button" className="btn-secondary px-3 py-1.5" disabled={busy !== null} onClick={() => setPending({ kind: 'restore', items: rows.filter((row) => selected.includes(row.id)) })}>
+                            <RotateCcw className="size-4" aria-hidden="true" /> Restaurer la sélection
+                        </button>
+                        <button type="button" className="btn-danger px-3 py-1.5" disabled={busy !== null} onClick={() => setPending({ kind: 'destroy', items: rows.filter((row) => selected.includes(row.id)) })}>
+                            <Trash2 className="size-4" aria-hidden="true" /> Supprimer définitivement la sélection
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div className="card list-scroll p-0">
                 <table className="data-table">
                     <thead>
                         <tr>
+                            <th className="w-10">
+                                <input type="checkbox" className="size-4 rounded border-slate-300" aria-label="Tout sélectionner" checked={allChecked} disabled={rows.length === 0} onChange={(event) => setSelected(event.target.checked ? rows.map((row) => row.id) : [])} />
+                            </th>
                             <th>Référence</th>
                             <th>Objet</th>
                             <th>Destinataires</th>
@@ -51,7 +102,7 @@ export default function Trash({ title, dossiers, requestsUrl }) {
                     <tbody>
                         {dossiers.data.length === 0 && (
                             <tr>
-                                <td colSpan="5" className="py-12 text-center text-slate-500">
+                                <td colSpan="6" className="py-12 text-center text-slate-500">
                                     <span className="mx-auto mb-2 block w-fit text-slate-300 dark:text-slate-600"><Icon name="trash" className="size-8" /></span>
                                     La corbeille est vide.
                                 </td>
@@ -59,7 +110,8 @@ export default function Trash({ title, dossiers, requestsUrl }) {
                         )}
 
                         {dossiers.data.map((dossier) => (
-                            <tr key={dossier.id} className={busy === dossier.id ? 'opacity-50' : ''}>
+                            <tr key={dossier.id} className={busy ? 'opacity-70' : ''}>
+                                <td className="w-10"><input type="checkbox" className="size-4 rounded border-slate-300" aria-label={`Sélectionner ${dossier.reference}`} checked={selected.includes(dossier.id)} onChange={(event) => toggle(dossier.id, event.target.checked)} /></td>
                                 <td data-label="Référence" className="font-mono text-xs font-semibold whitespace-nowrap">{dossier.reference}</td>
                                 <td data-label="Objet">
                                     <div className="font-medium whitespace-nowrap" title={dossier.subject}>{shortText(dossier.subject)}</div>
@@ -73,7 +125,7 @@ export default function Trash({ title, dossiers, requestsUrl }) {
                                             type="button"
                                             className="btn-secondary px-3 py-1.5"
                                             disabled={busy !== null}
-                                            onClick={() => send(dossier, 'post', dossier.restore_url, `Restaurer le dossier ${dossier.reference} dans vos demandes ?`)}
+                                            onClick={() => setPending({ kind: 'restore', items: [dossier] })}
                                         >
                                             <Icon name="restore" className="size-4" /> Restaurer
                                         </button>
@@ -81,7 +133,7 @@ export default function Trash({ title, dossiers, requestsUrl }) {
                                             type="button"
                                             className="btn-danger px-3 py-1.5"
                                             disabled={busy !== null}
-                                            onClick={() => send(dossier, 'delete', dossier.destroy_url, `Supprimer définitivement le dossier ${dossier.reference} de votre espace ? Cette action est irréversible. Les destinataires le conservent.`)}
+                                            onClick={() => setPending({ kind: 'destroy', items: [dossier] })}
                                         >
                                             <Icon name="trash" className="size-4" /> Supprimer définitivement
                                         </button>
@@ -112,6 +164,18 @@ export default function Trash({ title, dossiers, requestsUrl }) {
                 </nav>
             )}
             </div>
+
+            <ConfirmDialog
+                open={pending !== null}
+                onOpenChange={(open) => !open && setPending(null)}
+                danger={pending?.kind === 'destroy'}
+                Icon={pending?.kind === 'destroy' ? Trash2 : RotateCcw}
+                title={wording.title}
+                question={wording.question}
+                confirmLabel={wording.label}
+                onConfirm={confirm}
+                processing={busy !== null}
+            />
         </>
     );
 }

@@ -65,6 +65,32 @@ class DossierTrash
         });
     }
 
+    /**
+     * Opérations groupées : tout ou rien, trace d'audit comprise.
+     *
+     * @param  iterable<Dossier>  $dossiers
+     */
+    public function trashMany(iterable $dossiers): void
+    {
+        DB::transaction(fn () => collect($dossiers)->each(fn (Dossier $dossier) => $this->trash($dossier)));
+    }
+
+    /**
+     * @param  iterable<Dossier>  $dossiers
+     */
+    public function restoreMany(iterable $dossiers): void
+    {
+        DB::transaction(fn () => collect($dossiers)->each(fn (Dossier $dossier) => $this->restore($dossier)));
+    }
+
+    /**
+     * @param  iterable<Dossier>  $dossiers
+     */
+    public function purgeMany(iterable $dossiers): void
+    {
+        DB::transaction(fn () => collect($dossiers)->each(fn (Dossier $dossier) => $this->purge($dossier)));
+    }
+
     private function lock(Dossier $dossier): Dossier
     {
         return Dossier::query()->whereKey($dossier->getKey())->lockForUpdate()->firstOrFail();

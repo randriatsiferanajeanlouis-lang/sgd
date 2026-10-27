@@ -44,6 +44,7 @@ final class DossierListItem
             'removal' => $viewer->hasPermission('view_all_dossiers') ? $dossier->senderRemoval() : null,
             'showUrl' => route('dossiers.show', $dossier),
             'editUrl' => $viewer->can('update', $dossier) ? route('dossiers.edit', $dossier) : null,
+            'deleteUrl' => $viewer->can('delete', $dossier) ? route('dossiers.destroy', $dossier) : null,
         ];
     }
 }

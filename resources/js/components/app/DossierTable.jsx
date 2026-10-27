@@ -1,4 +1,7 @@
-import { Eye, Pencil } from 'lucide-react';
+import { useState } from 'react';
+import { router } from '@inertiajs/react';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
+import ConfirmDialog from '@/components/app/ConfirmDialog';
 import Pagination from '@/components/app/Pagination';
 import StatusBadge from '@/components/app/StatusBadge';
 import { shortText } from '@/lib/text';
@@ -10,6 +13,18 @@ import { shortText } from '@/lib/text';
  */
 export default function DossierTable({ dossiers, actions = true }) {
     const rows = dossiers.data ?? [];
+    // « Supprimer » : mise à la corbeille de l'expéditeur, après confirmation.
+    const [pendingDelete, setPendingDelete] = useState(null);
+    const [deleting, setDeleting] = useState(false);
+
+    const confirmDelete = () => {
+        setDeleting(true);
+        router.delete(pendingDelete.deleteUrl, {
+            preserveScroll: true,
+            onFinish: () => setDeleting(false),
+            onSuccess: () => setPendingDelete(null),
+        });
+    };
 
     return (
         <>
@@ -89,6 +104,11 @@ export default function DossierTable({ dossiers, actions = true }) {
                                                     <Pencil className="size-4" aria-hidden="true" />
                                                 </a>
                                             )}
+                                            {dossier.deleteUrl && (
+                                                <button type="button" className="btn-secondary min-h-8 px-2.5 py-1.5 text-red-600" title="Placer dans la corbeille" aria-label={`Supprimer ${dossier.reference}`} onClick={() => setPendingDelete(dossier)}>
+                                                    <Trash2 className="size-4" aria-hidden="true" />
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 )}
@@ -109,6 +129,18 @@ export default function DossierTable({ dossiers, actions = true }) {
             <div className="mt-4">
                 <Pagination paginator={dossiers} />
             </div>
+
+            <ConfirmDialog
+                open={pendingDelete !== null}
+                onOpenChange={(open) => !open && setPendingDelete(null)}
+                danger
+                Icon={Trash2}
+                title="Supprimer le dossier"
+                question={`Placer le dossier ${pendingDelete?.reference} dans la corbeille ? Il disparaîtra de votre espace, mais les destinataires le conserveront. Vous pourrez le restaurer depuis la corbeille.`}
+                confirmLabel="Placer dans la corbeille"
+                onConfirm={confirmDelete}
+                processing={deleting}
+            />
         </>
     );
 }

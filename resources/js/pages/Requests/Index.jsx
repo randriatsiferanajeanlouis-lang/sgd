@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, ArrowUpDown, Eye, FileSpreadsheet, FolderOpen, Inbox, Mail, Paperclip, Plus, Search, Settings2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Eye, FileSpreadsheet, FolderOpen, Inbox, Mail, Paperclip, Plus, Search, Settings2, Trash2 } from 'lucide-react';
+import ConfirmDialog from '@/components/app/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -55,11 +56,40 @@ export default function RequestsIndex({ dossiers, counts, statuses, filters, url
     const [visible, setVisible] = useState(readColumns);
     const [search, setSearch] = useState(filters.search);
     const firstRender = useRef(true);
+    // Suppression (corbeille) : lignes cochées et dossiers en attente de confirmation.
+    const [selected, setSelected] = useState([]);
+    const [pendingDelete, setPendingDelete] = useState(null);
+    const [deleting, setDeleting] = useState(false);
 
     const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
     const rows = dossiers.data;
     const show = (key) => visible.includes(key);
-    const columnCount = 1 + visible.length + 1;
+    const columnCount = 2 + visible.length + 1;
+    const deletable = rows.filter((row) => row.deleteUrl);
+    const allChecked = deletable.length > 0 && deletable.every((row) => selected.includes(row.id));
+
+    // Le serveur renvoie la liste à jour après chaque opération : on ne garde que les lignes encore affichées.
+    useEffect(() => setSelected((ids) => ids.filter((id) => rows.some((row) => row.id === id))), [rows]);
+
+    const toggle = (id, checked) => setSelected((ids) => (checked ? [...ids, id] : ids.filter((item) => item !== id)));
+
+    const confirmDelete = () => {
+        const options = {
+            preserveScroll: true,
+            onFinish: () => setDeleting(false),
+            onSuccess: () => {
+                setPendingDelete(null);
+                setSelected([]);
+            },
+        };
+        setDeleting(true);
+
+        if (pendingDelete.length === 1) {
+            router.delete(pendingDelete[0].deleteUrl, options);
+        } else {
+            router.post(urls.trash, { ids: pendingDelete.map((row) => row.id) }, options);
+        }
+    };
 
     const visit = (changes) =>
         router.get(urls.index, cleanQuery({ ...filters, group: filters.group ? undefined : '0', ...changes }), {
@@ -178,11 +208,33 @@ export default function RequestsIndex({ dossiers, counts, statuses, filters, url
                     </Select>
                 </div>
 
+                {selected.length > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/60 px-4 py-2 text-sm sm:px-5" role="status">
+                        <span>{selected.length} dossier{selected.length > 1 ? 's' : ''} sélectionné{selected.length > 1 ? 's' : ''}</span>
+                        <div className="flex gap-2">
+                            <Button type="button" variant="outline" size="sm" onClick={() => setSelected([])}>Désélectionner</Button>
+                            <Button type="button" variant="destructive" size="sm" onClick={() => setPendingDelete(rows.filter((row) => selected.includes(row.id)))}>
+                                <Trash2 /> Supprimer la sélection
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
                 <div className="list-scroll">
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-muted/40 hover:bg-muted/40">
-                            <SortHead column="subject" filters={filters} onSort={sortBy} className="pl-4 sm:pl-5">Demande</SortHead>
+                            <TableHead className="w-10 pl-4 sm:pl-5">
+                                <input
+                                    type="checkbox"
+                                    className="size-4 rounded border-slate-300"
+                                    aria-label="Tout sélectionner"
+                                    checked={allChecked}
+                                    disabled={deletable.length === 0}
+                                    onChange={(event) => setSelected(event.target.checked ? deletable.map((row) => row.id) : [])}
+                                />
+                            </TableHead>
+                            <SortHead column="subject" filters={filters} onSort={sortBy}>Demande</SortHead>
                             {show('recipients') && <TableHead className="hidden lg:table-cell">Destinataires</TableHead>}
                             {show('status') && <TableHead>Statut</TableHead>}
                             {show('changed') && <SortHead column="updated_at" filters={filters} onSort={sortBy} className="hidden md:table-cell">Modifié le / par</SortHead>}
@@ -217,12 +269,23 @@ export default function RequestsIndex({ dossiers, counts, statuses, filters, url
                                         key={row.id}
                                         className="cursor-pointer"
                                         onClick={(event) => {
-                                            if (!event.target.closest('a, button')) {
+                                            if (!event.target.closest('a, button, input, label')) {
                                                 window.location.assign(row.showUrl);
                                             }
                                         }}
                                     >
-                                        <TableCell className="max-w-[22rem] py-3.5 pl-4 sm:pl-5">
+                                        <TableCell className="w-10 pl-4 sm:pl-5">
+                                            {row.deleteUrl && (
+                                                <input
+                                                    type="checkbox"
+                                                    className="size-4 rounded border-slate-300"
+                                                    aria-label={`Sélectionner ${row.reference}`}
+                                                    checked={selected.includes(row.id)}
+                                                    onChange={(event) => toggle(row.id, event.target.checked)}
+                                                />
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="max-w-[22rem] py-3.5">
                                             <a href={row.showUrl} title={row.subject} className="block font-semibold whitespace-nowrap hover:text-primary hover:underline">{shortText(row.subject)}</a>
                                             <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
                                                 <span className="font-mono">{row.reference}</span>
@@ -273,9 +336,16 @@ export default function RequestsIndex({ dossiers, counts, statuses, filters, url
                                             </TableCell>
                                         )}
                                         <TableCell className="pr-4 text-right">
-                                            <Button asChild variant="outline" size="sm" className="h-8">
-                                                <a href={row.showUrl} aria-label={`Voir le dossier ${row.reference}`}><Eye /> Voir</a>
-                                            </Button>
+                                            <div className="inline-flex gap-1.5">
+                                                <Button asChild variant="outline" size="sm" className="h-8">
+                                                    <a href={row.showUrl} aria-label={`Voir le dossier ${row.reference}`}><Eye /> Voir</a>
+                                                </Button>
+                                                {row.deleteUrl && (
+                                                    <Button type="button" variant="outline" size="icon" className="size-8 text-destructive" title="Placer dans la corbeille" aria-label={`Supprimer le dossier ${row.reference}`} onClick={() => setPendingDelete([row])}>
+                                                        <Trash2 />
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -303,6 +373,21 @@ export default function RequestsIndex({ dossiers, counts, statuses, filters, url
                 )}
             </div>
 
+            <ConfirmDialog
+                open={pendingDelete !== null}
+                onOpenChange={(open) => !open && setPendingDelete(null)}
+                danger
+                Icon={Trash2}
+                title={pendingDelete?.length > 1 ? `Supprimer ${pendingDelete.length} dossiers` : 'Supprimer le dossier'}
+                question={
+                    pendingDelete?.length > 1
+                        ? `Placer ces ${pendingDelete.length} dossiers dans la corbeille ? Ils disparaîtront de votre espace, mais les destinataires les conserveront. Vous pourrez les restaurer depuis la corbeille.`
+                        : `Placer le dossier ${pendingDelete?.[0]?.reference} dans la corbeille ? Il disparaîtra de votre espace, mais les destinataires le conserveront. Vous pourrez le restaurer depuis la corbeille.`
+                }
+                confirmLabel="Placer dans la corbeille"
+                onConfirm={confirmDelete}
+                processing={deleting}
+            />
         </>
     );
 }

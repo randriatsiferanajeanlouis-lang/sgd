@@ -136,6 +136,7 @@ class DossierController extends Controller
                 'createExternal' => $request->user()->can('createExternal', Dossier::class) ? route('external-requests.create') : null,
                 'dossiers' => $request->user()->hasPermission('view_own_dossiers') ? route('dossiers.index') : null,
                 'export' => route('requests.export'),
+                'trash' => route('requests.trash'),
             ],
         ]);
     }
@@ -215,7 +216,26 @@ class DossierController extends Controller
             'deadline' => $deadline ? ['label' => $deadline['label'], 'overdue' => $deadline['overdue']] : null,
             'documents' => $dossier->documents_count,
             'showUrl' => route('dossiers.show', $dossier),
+            'deleteUrl' => $user->can('delete', $dossier) ? route('dossiers.destroy', $dossier) : null,
         ];
+    }
+
+    /**
+     * « Supprimer » plusieurs dossiers : tous vont dans la corbeille de l'expéditeur,
+     * ou aucun si l'un d'eux n'est pas à lui.
+     */
+    public function destroyMany(Request $request, DossierTrash $trash): RedirectResponse
+    {
+        $ids = $request->validate(['ids' => ['required', 'array', 'min:1', 'max:100'], 'ids.*' => ['integer', 'distinct']])['ids'];
+
+        $dossiers = Dossier::query()->whereKey($ids)->get();
+        abort_if($dossiers->count() !== count($ids), 404);
+        $dossiers->each(fn (Dossier $dossier) => Gate::authorize('delete', $dossier));
+
+        $trash->trashMany($dossiers);
+
+        return redirect()->back()
+            ->with('status', $dossiers->count().' dossier(s) placé(s) dans la corbeille. Les destinataires les conservent.');
     }
 
     /**
@@ -227,7 +247,10 @@ class DossierController extends Controller
 
         $trash->trash($dossier);
 
-        return redirect()->route('requests.index')
+        // Depuis une liste, on y reste ; depuis la fiche du dossier (qui n'est plus accessible), on retourne aux demandes.
+        $fromShow = url()->previous() === route('dossiers.show', $dossier);
+
+        return ($fromShow ? redirect()->route('requests.index') : redirect()->back(fallback: route('requests.index')))
             ->with('status', "Le dossier {$dossier->reference} a été placé dans la corbeille. Les destinataires le conservent.");
     }
 

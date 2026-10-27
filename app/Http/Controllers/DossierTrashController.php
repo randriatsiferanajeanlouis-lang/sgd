@@ -42,6 +42,7 @@ class DossierTrashController extends Controller
             'title' => 'Corbeille',
             'dossiers' => $dossiers,
             'requestsUrl' => route('requests.index'),
+            'bulkUrls' => ['restore' => route('trash.restore-many'), 'destroy' => route('trash.destroy-many')],
         ]);
     }
 
@@ -61,5 +62,39 @@ class DossierTrashController extends Controller
         $trash->purge($dossier);
 
         return redirect()->route('trash.index')->with('status', "Le dossier {$dossier->reference} a été supprimé définitivement de votre espace.");
+    }
+
+    public function restoreMany(Request $request, DossierTrash $trash): RedirectResponse
+    {
+        $dossiers = $this->selected($request, 'restore');
+
+        $trash->restoreMany($dossiers);
+
+        return redirect()->route('trash.index')->with('status', $dossiers->count().' dossier(s) restauré(s) dans vos demandes.');
+    }
+
+    public function destroyMany(Request $request, DossierTrash $trash): RedirectResponse
+    {
+        $dossiers = $this->selected($request, 'forceDelete');
+
+        $trash->purgeMany($dossiers);
+
+        return redirect()->route('trash.index')->with('status', $dossiers->count().' dossier(s) supprimé(s) définitivement de votre espace.');
+    }
+
+    /**
+     * Dossiers cochés dans la corbeille, tous autorisés pour l'action ou aucun.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, Dossier>
+     */
+    private function selected(Request $request, string $ability): \Illuminate\Database\Eloquent\Collection
+    {
+        $ids = $request->validate(['ids' => ['required', 'array', 'min:1', 'max:100'], 'ids.*' => ['integer', 'distinct']])['ids'];
+
+        $dossiers = Dossier::query()->whereKey($ids)->get();
+        abort_if($dossiers->count() !== count($ids), 404);
+        $dossiers->each(fn (Dossier $dossier) => Gate::authorize($ability, $dossier));
+
+        return $dossiers;
     }
 }

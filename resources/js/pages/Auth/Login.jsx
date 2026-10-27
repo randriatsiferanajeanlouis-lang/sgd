@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Head, useForm, usePage } from '@inertiajs/react';
+import { Eye, EyeOff } from 'lucide-react';
 import PwaInstall from '@/components/app/PwaInstall';
 import Field from '@/components/form/Field';
 import GuestLayout from '@/layouts/GuestLayout';
@@ -10,6 +11,7 @@ import GuestLayout from '@/layouts/GuestLayout';
  */
 export default function Login({ loginUrl }) {
     const form = useForm({ username: '', password: '', remember: false });
+    const [showPassword, setShowPassword] = useState(false);
     // Erreurs reçues avec la page elle-même (ex. compte désactivé pendant la session).
     const pageErrors = usePage().props.errors ?? {};
 
@@ -56,12 +58,24 @@ export default function Login({ loginUrl }) {
                 <Field
                     name="password"
                     label="Mot de passe"
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     required
                     value={form.data.password}
                     onChange={(value) => form.setData('password', value)}
                     error={form.errors.password ?? pageErrors.password}
+                    trailing={
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword((shown) => !shown)}
+                            aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                            aria-pressed={showPassword}
+                            title={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-slate-500 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-500 dark:text-slate-400 dark:hover:text-slate-200"
+                        >
+                            {showPassword ? <EyeOff className="size-5" aria-hidden="true" /> : <Eye className="size-5" aria-hidden="true" />}
+                        </button>
+                    }
                 />
 
                 <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">

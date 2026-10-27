@@ -178,7 +178,10 @@ class Dossier extends Model
             if ($user->hasPermission('manage_external_requests')) {
                 $visible->orWhere('origin', DossierOrigin::External->value);
             }
-        });
+        })
+            // Un dossier mis à la corbeille par son expéditeur quitte aussi les listes
+            // de département et d'organisme de cet expéditeur.
+            ->where(fn (Builder $own) => $own->where('created_by', '!=', $user->id)->orWhereNull('trashed_by_sender_at'));
     }
 
     /**

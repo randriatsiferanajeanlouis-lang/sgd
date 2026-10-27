@@ -61,10 +61,13 @@ Route::middleware(['auth', 'account.usable'])->group(function () {
     Route::get('/dossiers/{dossier}/edit', [DossierController::class, 'edit'])->name('dossiers.edit');
     Route::put('/dossiers/{dossier}', [DossierController::class, 'update'])->name('dossiers.update');
     Route::delete('/dossiers/{dossier}', [DossierController::class, 'destroy'])->name('dossiers.destroy');
+    Route::post('/demandes/corbeille', [DossierController::class, 'destroyMany'])->name('requests.trash');
     Route::get('/demandes', [DossierController::class, 'requests'])->name('requests.index');
     Route::get('/demandes/export', [DossierController::class, 'exportRequests'])->name('requests.export');
     Route::get('/corbeille', [DossierTrashController::class, 'index'])->name('trash.index');
     Route::post('/corbeille/{dossier}/restore', [DossierTrashController::class, 'restore'])->name('trash.restore');
+    Route::post('/corbeille/restore', [DossierTrashController::class, 'restoreMany'])->name('trash.restore-many');
+    Route::delete('/corbeille', [DossierTrashController::class, 'destroyMany'])->name('trash.destroy-many');
     Route::delete('/corbeille/{dossier}', [DossierTrashController::class, 'destroy'])->name('trash.destroy');
     Route::get('/history', [HistoryController::class, 'index'])->name('history.index');
     Route::get('/dossiers/{dossier}/history.pdf', [HistoryController::class, 'pdf'])->name('dossiers.history.pdf');

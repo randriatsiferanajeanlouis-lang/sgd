@@ -73,13 +73,11 @@ class RequestsAndTrashTest extends TestCase
         $this->assertStringContainsString($second->reference, $csv);
         $this->assertStringNotContainsString('Autre expéditeur', $csv);
 
-        // Plus de suppression groupée ni de raccourci « Corbeille » dans cette liste.
+        // Suppression groupée vers la corbeille (cases à cocher) ; pas de raccourci « Corbeille » dans cette liste.
         $this->get(route('requests.index'))->assertInertia(fn (Assert $page) => $page
             ->missing('trashCount')
-            ->missing('urls.trash')
-            ->missing('urls.destroyMany')
-            ->missing('dossiers.data.0.canDelete'));
-        $this->assertFalse(\Illuminate\Support\Facades\Route::has('requests.destroy-many'));
+            ->where('urls.trash', route('requests.trash'))
+            ->has('dossiers.data.0.deleteUrl'));
         $this->assertNotSame($first->id, $foreign->id);
     }
 
