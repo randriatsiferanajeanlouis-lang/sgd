@@ -18,6 +18,12 @@ export default function Show({ dossier, can, urls, hr, myTreatment, validations,
         <>
             <Head title={dossier.reference} />
 
+            {dossier.removal && (
+                <div role="status" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+                    <strong>{dossier.removal.label}</strong> le {dossier.removal.at}. Le dossier, ses pièces et son historique sont conservés : l’expéditeur ne le voit plus dans son espace.
+                </div>
+            )}
+
             <Summary dossier={dossier} can={can} urls={urls} />
 
             <div className="mt-6 grid gap-6 xl:grid-cols-3">

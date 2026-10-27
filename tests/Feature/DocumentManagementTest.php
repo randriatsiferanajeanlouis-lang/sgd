@@ -82,9 +82,11 @@ class DocumentManagementTest extends TestCase
         $this->assertSame(['document' => 'contrat.pdf', 'version' => 1], $log->old_values);
         $this->assertSame(['document' => 'contrat-signe.pdf', 'version' => 2], $log->new_values);
 
+        // L'administrateur trace tout (historique de tous les dossiers) ; un employé étranger au dossier n'a rien.
         $admin = $this->makeUser(Role::ADMIN, 'ADMINISTRATION');
         $this->actingAs($admin)->get(route('documents.download', $v2))->assertOk();
-        $this->actingAs($admin)->get(route('documents.download', $v1))->assertForbidden();
+        $this->actingAs($admin)->get(route('documents.download', $v1))->assertOk();
+        $this->actingAs($this->makeUser(Role::STAFF, 'COLLECTE'))->get(route('documents.download', $v1))->assertForbidden();
 
         $this->actingAs($this->recipient)->get(route('dossiers.show', $this->dossier))
             ->assertPropsSee('contrat-signe.pdf', 'Remplacée')
@@ -113,7 +115,7 @@ class DocumentManagementTest extends TestCase
         $this->assertSame($this->sender->id, $document->cancelled_by);
         $this->assertSame('Mauvais fichier joint', $this->dossier->activityLogs()->where('action', 'document.cancelled')->sole()->comment);
 
-        $this->actingAs($this->makeUser(Role::ADMIN, 'ADMINISTRATION'))->get(route('documents.download', $document))->assertForbidden();
+        $this->actingAs($this->makeUser(Role::STAFF, 'COLLECTE'))->get(route('documents.download', $document))->assertForbidden();
     }
 
     public function test_zip_contains_only_active_documents(): void

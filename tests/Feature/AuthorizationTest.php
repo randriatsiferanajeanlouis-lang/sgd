@@ -77,23 +77,31 @@ class AuthorizationTest extends TestCase
         $this->assertFalse($this->user(Role::STAFF, 'RSE')->can('view', $external));
     }
 
-    public function test_admin_sees_dossiers_but_not_their_detailed_history(): void
+    public function test_admin_sees_dossiers_and_their_detailed_history_but_cannot_change_them(): void
     {
         $admin = $this->user(Role::ADMIN, 'ADMINISTRATION');
         $dossier = $this->dossierFrom($this->user(Role::STAFF));
 
         $this->assertTrue($admin->can('view', $dossier));
-        $this->assertFalse($admin->can('viewHistory', $dossier));
+        $this->assertTrue($admin->can('viewHistory', $dossier));
+
+        // Lecture seule : aucune modification, suppression, pièce ni réponse.
+        $this->assertFalse($admin->can('update', $dossier));
+        $this->assertFalse($admin->can('delete', $dossier));
+        $this->assertFalse($admin->can('addDocument', $dossier));
+        $this->assertFalse($admin->can('restore', $dossier));
+        $this->actingAs($admin)->put(route('dossiers.update', $dossier), ['subject' => 'Modifié'])->assertForbidden();
+        $this->delete(route('dossiers.destroy', $dossier))->assertForbidden();
     }
 
-    public function test_admin_history_access_can_be_granted_without_code_change(): void
+    public function test_admin_history_access_can_be_removed_without_code_change(): void
     {
         $admin = $this->user(Role::ADMIN, 'ADMINISTRATION');
         $dossier = $this->dossierFrom($this->user(Role::STAFF));
 
-        $admin->role->permissions()->attach(Permission::query()->firstWhere('name', 'view_all_history'));
+        $admin->role->permissions()->detach(Permission::query()->firstWhere('name', 'view_all_history'));
 
-        $this->assertTrue($admin->fresh()->can('viewHistory', $dossier));
+        $this->assertFalse($admin->fresh()->can('viewHistory', $dossier));
     }
 
     public function test_employee_sees_history_of_own_dossiers_only(): void

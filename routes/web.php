@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\DepartmentController;
+use App\Http\Controllers\Admin\DossierMonitorController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
@@ -124,6 +125,7 @@ Route::middleware(['auth', 'account.usable'])->group(function () {
             Route::patch('/departments/{department}/toggle', [DepartmentController::class, 'toggle'])->name('departments.toggle');
         });
 
+        Route::get('/dossiers', [DossierMonitorController::class, 'index'])->name('dossiers.index');
         Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
         Route::get('/activity', [ActivityLogController::class, 'index'])->middleware('can:view_activity_log')->name('activity.index');
 

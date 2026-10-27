@@ -173,8 +173,8 @@ class RoleSeeder extends Seeder
                     'view_departments',
                 ],
             ],
-            // Pas de permission d'historique : l'administrateur voit les dossiers
-            // mais pas leur historique détaillé (modifiable depuis l'écran des permissions).
+            // L'administrateur voit tous les dossiers (lecture seule : seuls l'expéditeur et les
+            // destinataires agissent) et l'historique de chacun d'eux, pour tracer l'activité du système.
             Role::ADMIN => [
                 'label' => 'Administrateur',
                 'description' => 'Gère les utilisateurs, départements, rôles, permissions et paramètres.',
@@ -182,6 +182,7 @@ class RoleSeeder extends Seeder
                     'create_internal_request',
                     'view_own_dossiers',
                     'view_all_dossiers',
+                    'view_all_history',
                     'respond_dossier',
                     'transmit_dossier',
                     'archive_dossier',

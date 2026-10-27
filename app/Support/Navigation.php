@@ -27,12 +27,11 @@ class Navigation
                     // sont des boutons de cette page. Sans droit de créer (administrateur),
                     // « Voir les dossiers » reste une entrée du menu.
                     $user->can('createInternal', Dossier::class)
-                        ? self::item('Demande', 'requests.index', 'requests.index|dossiers.create|dossiers.index', 'send')
+                        ? self::item('Demande', 'requests.index', 'requests.index|dossiers.create|dossiers.index|external-requests.create', 'send')
                         : ($user->hasPermission('view_own_dossiers') ? self::item('Voir les dossiers', 'dossiers.index', 'dossiers.index', 'folder-open') : null),
                     $user->can('viewAnyHistory', Dossier::class) ? self::item('Historique', 'history.index', 'history.*', 'clock') : null,
                     self::item('Notifications', 'notifications.index', 'notifications.*', 'bell'),
                     $user->can('viewTrash', Dossier::class) ? self::item('Corbeille', 'trash.index', 'trash.*', 'trash') : null,
-                    $user->can('createExternal', Dossier::class) ? self::item('Nouvelle demande externe', 'external-requests.create', 'external-requests.create', 'mail') : null,
                 ],
             ],
             [
@@ -49,6 +48,7 @@ class Navigation
                 'label' => 'Administration',
                 'items' => [
                     $user->hasPermission('manage_users') ? self::item('Utilisateurs', 'admin.users.index', 'admin.users.*', 'users') : null,
+                    $user->hasPermission('view_all_dossiers') ? self::item('Suivi des dossiers', 'admin.dossiers.index', 'admin.dossiers.*', 'folder-open') : null,
                     $user->hasPermission('manage_departments') ? self::item('Départements', 'admin.departments.index', 'admin.departments.*', 'building') : null,
                     $user->hasPermission('manage_permissions') ? self::item('Rôles et permissions', 'admin.roles.index', 'admin.roles.*', 'shield') : null,
                     $user->hasPermission('view_activity_log') ? self::item('Journal d’activité', 'admin.activity.index', 'admin.activity.*', 'activity') : null,
@@ -91,6 +91,11 @@ class Navigation
             if ($user->hasPermission('view_own_dossiers')) {
                 $groups[0]['items'][] = ['label' => 'Voir les dossiers', 'url' => route('dossiers.index')];
             }
+        }
+
+        // Plus dans le menu : bouton de la page « Demande », mais toujours trouvable par la recherche rapide.
+        if ($user->can('createExternal', Dossier::class)) {
+            $groups[0]['items'][] = ['label' => 'Nouvelle demande externe', 'url' => route('external-requests.create')];
         }
 
         $groups[] = ['label' => 'Mon compte', 'items' => [

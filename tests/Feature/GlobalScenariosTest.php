@@ -148,7 +148,8 @@ class GlobalScenariosTest extends TestCase
         $this->assertSame(DocumentStatus::Active, $v2->status);
         $this->assertTrue($dossier->activityLogs()->where('action', 'document.replaced')->exists());
         $admin = $this->makeUser(Role::ADMIN, 'ADMINISTRATION');
-        $this->actingAs($admin)->get(route('documents.download', $v1))->assertForbidden();
+        $this->actingAs($admin)->get(route('documents.download', $v1))->assertOk(); // l'administrateur lit l'historique de tous les dossiers
+        $this->actingAs($this->makeUser(Role::STAFF, 'COLLECTE'))->get(route('documents.download', $v1))->assertForbidden();
         $this->actingAs($admin)->get(route('documents.download', $v2))->assertOk();
     }
 

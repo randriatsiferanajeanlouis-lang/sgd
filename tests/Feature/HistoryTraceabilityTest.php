@@ -81,17 +81,18 @@ class HistoryTraceabilityTest extends TestCase
         $this->actingAs($technicalHead)->get(route('dossiers.history.pdf', $this->dossier))->assertOk();
         $this->actingAs($otherHead)->get(route('dossiers.show', $this->dossier))->assertForbidden();
 
-        $this->actingAs($admin)->get(route('dossiers.show', $this->dossier))->assertOk()->assertInertia(fn ($page) => $page->where('can.viewHistory', false)->where('history', null));
-        $this->actingAs($admin)->get(route('dossiers.history.pdf', $this->dossier))->assertForbidden();
-        $this->actingAs($admin)->get(route('dossiers.history.word', $this->dossier))->assertForbidden();
+        // L'administrateur trace toute l'activité : historique et exports de tous les dossiers.
+        $this->actingAs($admin)->get(route('dossiers.show', $this->dossier))->assertOk()->assertInertia(fn ($page) => $page->where('can.viewHistory', true)->whereNot('history', null));
+        $this->actingAs($admin)->get(route('dossiers.history.pdf', $this->dossier))->assertOk();
+        $this->actingAs($admin)->get(route('dossiers.history.word', $this->dossier))->assertOk();
     }
 
     public function test_admin_history_rule_is_configurable_from_permissions(): void
     {
         $admin = $this->makeUser(Role::ADMIN, 'ADMINISTRATION');
-        $admin->role->permissions()->attach(Permission::query()->firstWhere('name', 'view_all_history'));
+        $admin->role->permissions()->detach(Permission::query()->firstWhere('name', 'view_all_history'));
 
-        $this->actingAs($admin->fresh())->get(route('dossiers.show', $this->dossier))->assertInertia(fn ($page) => $page->where('can.viewHistory', true)->whereNot('history', null));
+        $this->actingAs($admin->fresh())->get(route('dossiers.show', $this->dossier))->assertInertia(fn ($page) => $page->where('can.viewHistory', false)->where('history', null));
     }
 
     public function test_pdf_export_is_an_a4_pdf(): void

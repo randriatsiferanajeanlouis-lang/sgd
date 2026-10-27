@@ -93,6 +93,25 @@ class Dossier extends Model
         return $this->trashed_by_sender_at !== null;
     }
 
+    /**
+     * Retrait du dossier par son expéditeur, pour le suivi de l'administrateur :
+     * le dossier n'est jamais effacé, il reste consultable et tracé.
+     *
+     * @return array{state: string, label: string, at: string}|null
+     */
+    public function senderRemoval(): ?array
+    {
+        if ($this->purged_by_sender_at) {
+            return ['state' => 'purged', 'label' => 'Supprimé définitivement par l’expéditeur', 'at' => $this->purged_by_sender_at->format('d/m/Y H:i')];
+        }
+
+        if ($this->trashed_by_sender_at) {
+            return ['state' => 'trashed', 'label' => 'Dans la corbeille de l’expéditeur', 'at' => $this->trashed_by_sender_at->format('d/m/Y H:i')];
+        }
+
+        return null;
+    }
+
     /** Nombre maximal de caractères de l'objet affichés dans les listes. */
     public const SUBJECT_LIST_CHARS = 15;
 

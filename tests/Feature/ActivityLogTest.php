@@ -71,9 +71,9 @@ class ActivityLogTest extends TestCase
             ->where('activity.items.0.subtitle', $dossier->reference.' — Pièces moteur'));
         $this->actingAs($outsider)->get(route('dashboard'))->assertInertia(fn (Assert $page) => $page->has('activity.items', 0));
 
-        // Administrateur : pas d'historique des dossiers, mais le journal d'administration.
+        // Administrateur : il lit l'historique de tous les dossiers, la page Historique est donc proposée.
         $this->actingAs($this->makeUser(Role::ADMIN, 'ADMINISTRATION'))->get(route('dashboard'))->assertInertia(fn (Assert $page) => $page
-            ->where('activity.url', route('admin.activity.index')));
+            ->where('activity.url', route('history.index')));
     }
 
     public function test_flash_messages_become_toasts_and_the_command_palette_lists_allowed_pages(): void

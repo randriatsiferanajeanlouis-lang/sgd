@@ -168,9 +168,14 @@ class InterfaceTest extends TestCase
         $this->actingAs($recipient)->get(route('history.index'))->assertOk()->assertPropsSee('Pièces moteur');
         $this->actingAs($outsider)->get(route('history.index'))->assertOk()->assertPropsDontSee('Pièces moteur');
 
-        // Administrateur : aucune permission d'historique, ni bouton ni page.
+        // Administrateur : il trace toute l'activité, avec le bouton et la page, et voit aussi ce dossier.
         $admin = $this->user(Role::ADMIN, 'ADMINISTRATION');
-        $this->actingAs($admin)->get(route('dashboard'))->assertDontSee(route('history.index').'"', false);
+        $this->actingAs($admin)->get(route('dashboard'))->assertSee(route('history.index').'"', false);
+        $this->get(route('history.index'))->assertOk()->assertPropsSee('Pièces moteur');
+
+        // Retirer la permission d'historique ferme le bouton et la page.
+        $admin->role->permissions()->detach(\App\Models\Permission::query()->firstWhere('name', 'view_all_history'));
+        $this->actingAs($admin->fresh())->get(route('dashboard'))->assertDontSee(route('history.index').'"', false);
         $this->get(route('history.index'))->assertForbidden();
     }
 

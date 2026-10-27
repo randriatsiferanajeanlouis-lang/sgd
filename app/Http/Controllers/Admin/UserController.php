@@ -60,7 +60,8 @@ class UserController extends Controller
                 'role' => $request->string('role')->toString(),
                 'status' => $request->string('status')->toString(),
             ],
-            'departments' => Department::query()->orderBy('sort_order')->get(['id', 'name'])
+            // Départements actifs seulement (un département désactivé disparaît de la liste), sauf celui déjà choisi dans le filtre.
+            'departments' => Department::query()->where(fn (Builder $query) => $query->active()->orWhere('id', $request->integer('department')))->orderBy('sort_order')->get(['id', 'name'])
                 ->map(fn (Department $department) => ['value' => (string) $department->id, 'label' => $department->name])->values(),
             'roles' => Role::query()->orderBy('label')->get(['id', 'label'])
                 ->map(fn (Role $role) => ['value' => (string) $role->id, 'label' => $role->label])->values(),

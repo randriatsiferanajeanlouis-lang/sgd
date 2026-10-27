@@ -40,6 +40,8 @@ final class DossierListItem
                 ? ['label' => $mine->status->label(), 'color' => $mine->status->color(), 'mine' => true]
                 : ['label' => $dossier->status->label(), 'color' => $dossier->status->color(), 'mine' => false],
             'deadline' => Deadline::describe($dueAt, $closed) ?? ($dueAt ? ['label' => $dueAt->format('d/m/Y'), 'color' => null, 'overdue' => false] : null),
+            // Visible seulement par qui voit tous les dossiers (administrateur) : suivi des dossiers retirés par leur expéditeur.
+            'removal' => $viewer->hasPermission('view_all_dossiers') ? $dossier->senderRemoval() : null,
             'showUrl' => route('dossiers.show', $dossier),
             'editUrl' => $viewer->can('update', $dossier) ? route('dossiers.edit', $dossier) : null,
         ];
