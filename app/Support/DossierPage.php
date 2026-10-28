@@ -278,7 +278,7 @@ final class DossierPage
     }
 
     /**
-     * Échéance comme le composant Blade <x-deadline> : pastille, ou simple date si le traitement est clos.
+     * Échéance comme l’ancienne pastille Blade : pastille, ou simple date si le traitement est clos.
      *
      * @return array{label: string, color: ?string, overdue: bool}|null
      */

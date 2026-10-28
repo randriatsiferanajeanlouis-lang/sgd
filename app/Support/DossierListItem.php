@@ -8,7 +8,7 @@ use App\Models\User;
 
 /**
  * Ligne de tableau de dossiers envoyée aux pages React (même contenu que le
- * composant Blade <x-dossier-table>) : seules les informations affichées,
+ * ancien tableau Blade) : seules les informations affichées,
  * calculées pour l'utilisateur qui consulte la liste.
  */
 final class DossierListItem
